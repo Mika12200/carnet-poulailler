@@ -107,7 +107,22 @@ nav button[aria-current="page"]{color:var(--leaf)}
 .welcome h1{text-align:center}
 .welcome p{margin:0}
 .ver{color:var(--muted);font-size:.78rem;text-align:center;padding:4px 0 8px}
-body.onboarding nav{display:none}
+body.onboarding nav,body.onboarding #flockBtn{display:none}
+.tuto{min-height:calc(100dvh - 120px);justify-content:center}
+.tuto .panel{align-items:center;text-align:center;padding:28px 20px}
+.tuto .art{width:112px;height:112px;border-radius:28px;background:var(--yolk-soft);display:grid;place-items:center}
+.tuto .art svg,.tuto .art img{width:68px;height:68px}
+.tuto h1{font-size:1.5rem}
+.tuto p{margin:0;max-width:34ch}
+.dots{display:flex;gap:8px;justify-content:center}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--leaf);width:22px;border-radius:4px}
+.tuto .row{width:100%}
+.stars{display:flex;gap:6px}
+.stars button{font:inherit;font-size:1.9rem;line-height:1;background:none;border:0;cursor:pointer;color:var(--line);padding:4px;min-width:44px;min-height:44px}
+.stars button.on{color:var(--yolk)}
+textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;box-sizing:border-box;min-height:92px;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
 .egg{width:.95em;height:1.15em;vertical-align:-.18em;margin-left:2px}
 @media (max-width:420px){h1{font-size:1.2rem}header .sub{font-size:.78rem}.flock{padding:6px 10px}}
 </style>
@@ -120,6 +135,33 @@ body.onboarding nav{display:none}
     <div style="display:flex;gap:8px;align-items:center"><button class="flock" id="themeBtn" type="button" aria-label="Changer le thème jour ou nuit">☀️</button><button class="flock" id="flockBtn" type="button" aria-label="Modifier le nombre de poules">🐔 <span id="flockN">18</span> poules</button></div>
   </header>
   <div id="status" class="note" hidden></div>
+
+  <!-- TUTORIEL -->
+  <section class="view tuto" id="v-tuto" hidden>
+    <div class="panel">
+      <div class="art" id="tArt"></div>
+      <h1 id="tTitle"></h1>
+      <p id="tText"></p>
+      <div class="dots" id="tDots"></div>
+      <div class="row"><button class="btn ghost" type="button" id="tSkip">Passer</button><button class="btn" type="button" id="tNext">Suivant</button></div>
+    </div>
+  </section>
+
+  <!-- AVIS -->
+  <section class="view" id="v-avis" hidden>
+    <div class="panel">
+      <h2>Donner mon avis</h2>
+      <div class="sub">Cette appli est en test. Votre avis aide à l'améliorer : dites franchement ce qui vous plaît et ce qui vous manque.</div>
+      <div class="field"><label>Votre note</label><div class="stars" id="fStars"></div></div>
+      <div class="field"><label for="fGood">Ce qui vous plaît</label><textarea id="fGood" placeholder="Simple à utiliser, les statistiques…"></textarea></div>
+      <div class="field"><label for="fBad">Ce qui manque ou vous gêne</label><textarea id="fBad" placeholder="J'aimerais pouvoir…"></textarea></div>
+      <div class="field"><label for="fPay">Paieriez-vous pour cette appli ?</label><select id="fPay"><option value="">Choisir…</option><option>Oui, 1 à 2 € par mois</option><option>Oui, un achat unique de 5 à 10 €</option><option>Seulement si elle fait plus de choses</option><option>Non, je veux qu'elle reste gratuite</option></select></div>
+      <div class="field"><label for="fWho">Votre prénom (facultatif)</label><input id="fWho" placeholder="Pour qu'on puisse vous répondre"></div>
+      <button class="btn" type="button" id="fSend">Envoyer mon avis</button>
+      <div class="sub" id="fHow"></div>
+      <button class="btn ghost" type="button" id="fBack">Retour</button>
+    </div>
+  </section>
 
   <!-- BIENVENUE (premier lancement) -->
   <section class="view welcome" id="v-bienvenue" hidden>
@@ -140,6 +182,7 @@ body.onboarding nav{display:none}
   <!-- PONTE -->
   <section class="view" id="v-ponte" hidden>
     <div class="note" id="bRemind" hidden></div>
+    <div class="note" id="fRemind" hidden><b>Vous utilisez l'appli depuis une semaine 🎉</b><br><span class="sub">Qu'en pensez-vous ? Votre avis nous aide à l'améliorer.</span><div class="chips" style="margin-top:8px"><button class="chip" type="button" id="fRemGo">Donner mon avis</button><button class="chip" type="button" id="fRemNo">Plus tard</button></div></div>
     <div class="note" id="pRemind" hidden></div>
     <div class="panel">
       <div class="field"><label for="pDate">Jour</label><input type="date" id="pDate"></div>
@@ -280,6 +323,11 @@ body.onboarding nav{display:none}
       <div class="sub">Supprime toutes les saisies de ce téléphone. Faites une sauvegarde avant.</div>
       <button class="btn ghost" type="button" id="wipeBtn" style="color:var(--bad)">Effacer toutes les données</button>
     </div>
+    <div class="panel">
+      <h2>Aide et avis</h2>
+      <button class="btn yolk" type="button" id="fOpen">💬 Donner mon avis</button>
+      <button class="btn ghost" type="button" id="tOpen">Revoir le tutoriel</button>
+    </div>
     <div class="ver">Carnet du poulailler · version test <span id="verN"></span></div>
   </section>
 </div>
@@ -308,7 +356,7 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.3";
+const VERSION = "0.4";
 const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
 const COLS = ["ponte","achats","ventes","lots","evenements"];
@@ -366,8 +414,8 @@ function status(msg, bad){ const s=$("status"); s.hidden=!msg; s.textContent=msg
 let tab = "ponte";
 function show(name){
   tab = name;
-  for (const v of ["bienvenue","ponte","achats","ventes","stats","reglages"]) $("v-"+v).hidden = v!==name;
-  document.body.classList.toggle("onboarding", name==="bienvenue");
+  for (const v of ["tuto","avis","bienvenue","ponte","achats","ventes","stats","reglages"]) $("v-"+v).hidden = v!==name;
+  document.body.classList.toggle("onboarding", name==="bienvenue" || name==="tuto");
   if (name==="reglages") { $("cHens").value = state.cfg.poules; $("cPrice").value = state.cfg.prixOeuf; renderBackup(); }
   document.querySelectorAll("nav button").forEach(b => b.dataset.tab===name ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
   if (name==="stats") renderStats();
@@ -710,6 +758,58 @@ $("verN").textContent = VERSION;
 const _renderAll = renderAll;
 renderAll = function(){ _renderAll(); renderReminder(); };
 renderAll();
-if (!data.config.main) show("bienvenue"); else { show("ponte"); loadPonteForm(); }
+/* ---------- tutoriel ---------- */
+const TUTO = [
+  { art: EGG.replace('class="egg"', ''), t: "Notez votre ponte en 10 secondes", p: "Chaque jour, touchez + pour compter les œufs ramassés. L'appli calcule le taux de ponte et vous rappelle les jours oubliés." },
+  { art: `<svg viewBox="0 0 24 24" fill="none" stroke="#B8662D" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M15 9.2a3.4 3.4 0 1 0 0 5.6M7.5 11h5M7.5 13.2h5"/></svg>`, t: "Sachez ce que vous coûtent vos poules", p: "Notez vos sacs de grain, vos ventes et vos dons d'œufs : vous voyez votre marge et le prix de revient d'une douzaine." },
+  { art: `<img src="icons/icon-192.png" alt="">`, t: "Vos données restent chez vous", p: "Tout est enregistré sur ce téléphone, sans compte. Faites une sauvegarde de temps en temps dans l'onglet Réglages." }
+];
+let tStep = 0, tAfter = null;
+function paintTuto(){
+  const s = TUTO[tStep];
+  $("tArt").innerHTML = s.art; $("tTitle").textContent = s.t; $("tText").textContent = s.p;
+  $("tDots").innerHTML = TUTO.map((_,i)=>`<i class="${i===tStep?"on":""}"></i>`).join("");
+  $("tNext").textContent = tStep === TUTO.length-1 ? "C'est parti !" : "Suivant";
+  $("tSkip").hidden = tStep === TUTO.length-1;
+}
+function openTuto(after){ tStep = 0; tAfter = after; paintTuto(); show("tuto"); }
+function endTuto(){ data.meta.tutoVu = true; try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){} tAfter ? tAfter() : show("reglages"); }
+$("tNext").onclick = () => { if (tStep < TUTO.length-1) { tStep++; paintTuto(); } else endTuto(); };
+$("tSkip").onclick = endTuto;
+$("tOpen").onclick = () => openTuto(null);
+
+/* ---------- avis ---------- */
+// Adresse qui reçoit les avis des testeurs (laisser vide : l'avis est partagé via WhatsApp, SMS, mail…)
+const FEEDBACK_EMAIL = "";
+let fNote = 0, fFrom = "reglages";
+$("fStars").innerHTML = [1,2,3,4,5].map(n=>`<button type="button" data-star="${n}" aria-label="${n} sur 5">★</button>`).join("");
+$("fStars").onclick = e => { const b = e.target.closest("[data-star]"); if (!b) return; fNote = +b.dataset.star; [...$("fStars").children].forEach((x,i)=>x.classList.toggle("on", i < fNote)); };
+function openAvis(from){ fFrom = from; $("fHow").textContent = FEEDBACK_EMAIL ? "Votre application mail va s'ouvrir avec votre avis déjà rempli : il suffit d'appuyer sur Envoyer." : "Vous pourrez choisir comment l'envoyer (WhatsApp, SMS, mail…)."; show("avis"); }
+$("fOpen").onclick = () => openAvis("reglages");
+$("fBack").onclick = () => show(fFrom);
+$("fSend").onclick = async () => {
+  const good = $("fGood").value.trim(), bad = $("fBad").value.trim();
+  if (!fNote && !good && !bad) { toast("Donnez une note ou écrivez un mot"); return; }
+  const ua = navigator.userAgent.match(/Android[^;)]*|iPhone OS [\d_]+|Windows NT [\d.]+|Mac OS X [\d_]+/)?.[0] || "";
+  const txt = `Avis sur le Carnet du poulailler (version ${VERSION})\n\nNote : ${fNote ? "★".repeat(fNote)+"☆".repeat(5-fNote)+` (${fNote}/5)` : "non donnée"}\n\nCe qui me plaît :\n${good || "-"}\n\nCe qui manque ou me gêne :\n${bad || "-"}\n\nPaierais-je : ${$("fPay").value || "-"}\n\nPrénom : ${$("fWho").value.trim() || "-"}\nUtilisation : ${nbEntries()} saisies · ${state.cfg.poules} poules · ${ua}`;
+  let sent = false;
+  if (FEEDBACK_EMAIL) { location.href = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent("Avis Carnet du poulailler")}&body=${encodeURIComponent(txt)}`; sent = true; }
+  else if (navigator.share) { try { await navigator.share({ title: "Avis Carnet du poulailler", text: txt }); sent = true; } catch(e){ if (e?.name === "AbortError") return; } }
+  if (!sent) { try { await navigator.clipboard.writeText(txt); toast("Avis copié : collez-le dans un message"); sent = true; } catch(e){ toast("Envoi impossible sur cet appareil"); return; } }
+  data.meta.avisDonne = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){}
+  $("fGood").value = ""; $("fBad").value = ""; $("fPay").value = ""; fNote = 0; [...$("fStars").children].forEach(x=>x.classList.remove("on"));
+  renderAvisRemind(); toast("Merci pour votre avis !"); show(fFrom === "avis" ? "ponte" : fFrom);
+};
+function renderAvisRemind(){
+  const first = [...state.ponte].map(p=>p.date).sort()[0];
+  const days = first ? (Date.now() - new Date(first+"T12:00")) / 864e5 : 0;
+  const due = days >= 7 && state.ponte.length >= 5 && !data.meta.avisDonne && !(data.meta.avisPlusTard && Date.now() - new Date(data.meta.avisPlusTard) < 7*864e5);
+  $("fRemind").hidden = !due;
+}
+$("fRemGo").onclick = () => openAvis("ponte");
+$("fRemNo").onclick = () => { data.meta.avisPlusTard = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){} renderAvisRemind(); };
+const _renderAll2 = renderAll; renderAll = function(){ _renderAll2(); renderAvisRemind(); }; renderAvisRemind();
+
+if (!data.config.main) { data.meta.tutoVu ? show("bienvenue") : openTuto(() => show("bienvenue")); } else { show("ponte"); loadPonteForm(); }
 })();
 </script>

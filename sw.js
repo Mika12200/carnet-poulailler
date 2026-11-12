@@ -1,6 +1,6 @@
 // Carnet du poulailler — fonctionne hors connexion.
 // Changer CACHE à chaque nouvelle version pour que les téléphones la récupèrent.
-const CACHE = "poulailler-v0.3";
+const CACHE = "poulailler-v0.4";
 const FILES = [
   "./", "index.html", "manifest.webmanifest", "favicon.png",
   "lib/xlsx.full.min.js",
