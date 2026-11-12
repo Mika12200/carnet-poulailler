@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carnet du poulailler</title>
+<meta name="description" content="Suivi simple de vos poules : ponte, achats d'aliments, ventes d'œufs et statistiques.">
+<meta name="theme-color" content="#F5F6EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12160F" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+@font-face{font-family:"Inter";font-weight:400;font-display:swap;src:url(fonts/inter-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter";font-weight:500;font-display:swap;src:url(fonts/inter-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"Inter";font-weight:600;font-display:swap;src:url(fonts/inter-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Bricolage Grotesque";font-weight:600;font-display:swap;src:url(fonts/bricolage-grotesque-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"Bricolage Grotesque";font-weight:800;font-display:swap;src:url(fonts/bricolage-grotesque-latin-800-normal.woff2) format("woff2")}
+/* Layout: one-column phone app, sticky header, bottom tab bar, big touch targets */
+:root{
+  --bg:#F5F6EF; --surface:#FFFFFF; --fg:#1E281B; --muted:#66705F; --line:#DDE1D3;
+  --yolk:#E3A008; --yolk-soft:#FBEFCF; --leaf:#4C7A36; --leaf-soft:#E3EDD9; --bad:#B53A2B;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12160F; --surface:#1B2117; --fg:#ECEFE4; --muted:#9BA591; --line:#2E3828;
+  --yolk:#F2B632; --yolk-soft:#3A3014; --leaf:#8DBF6E; --leaf-soft:#22311A; --bad:#EF7C6B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12160F; --surface:#1B2117; --fg:#ECEFE4; --muted:#9BA591; --line:#2E3828;
+  --yolk:#F2B632; --yolk-soft:#3A3014; --leaf:#8DBF6E; --leaf-soft:#22311A; --bad:#EF7C6B; color-scheme:dark}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;-webkit-tap-highlight-color:transparent;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 110px}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-weight:800;font-size:1.45rem;margin:0;letter-spacing:-.01em}
+h2{font-family:var(--display);font-weight:600;font-size:1.1rem;margin:0}
+.sub{color:var(--muted);font-size:.85rem}
+.flock{display:flex;align-items:center;gap:6px;background:var(--yolk-soft);border-radius:999px;padding:6px 12px;font-weight:600;font-size:.9rem;border:0;color:var(--fg);cursor:pointer}
+.view{display:flex;flex-direction:column;gap:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
+label{font-size:.82rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+input,select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;box-sizing:border-box;min-height:46px}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
+.stepper{display:grid;grid-template-columns:64px 1fr 64px;gap:10px;align-items:center}
+.stepper button{height:64px;border-radius:14px;border:1px solid var(--line);background:var(--bg);font-size:2rem;font-weight:600;color:var(--fg);cursor:pointer}
+.stepper input{text-align:center;font-family:var(--display);font-size:2.6rem;font-weight:800;height:64px;border:0;background:transparent;font-variant-numeric:tabular-nums}
+.stepper.small button{height:48px;font-size:1.5rem}
+.stepper.small input{font-size:1.6rem;height:48px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:12px;min-height:52px;padding:0 18px;cursor:pointer;background:var(--leaf);color:var(--surface)}
+.btn.yolk{background:var(--yolk);color:#231A02}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:.9rem;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:999px;padding:8px 14px;cursor:pointer;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--leaf);border-color:var(--leaf);color:var(--surface)}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .t{min-width:0}
+.item .t b{font-weight:600}
+.item .t small{display:block;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+.item .v{font-family:var(--display);font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.del{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer;padding:8px;min-width:40px;min-height:40px}
+.del.armed{color:var(--bad);font-weight:600}
+.empty{color:var(--muted);font-size:.92rem;padding:6px 0}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--leaf-soft);color:var(--leaf)}
+.pill.warn{background:var(--yolk-soft);color:var(--fg)}
+.note{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--yolk-soft)}
+.note.bad{color:var(--bad)}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+.kpi .n{font-family:var(--display);font-weight:800;font-size:1.55rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .l{font-size:.8rem;color:var(--muted)}
+.kpi.hero{grid-column:1/-1;background:var(--yolk-soft);border-color:transparent}
+.kpi.hero .n{font-size:2.2rem}
+.neg{color:var(--bad)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{font:inherit;font-weight:600;border:0;border-radius:9px;min-height:40px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--leaf);color:var(--surface)}
+.period{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.period button{font:inherit;font-size:1.4rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;width:46px;height:46px;cursor:pointer}
+.period h2{text-transform:capitalize;text-align:center}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--body);font-size:10px}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:110px 1fr auto;gap:10px;align-items:center;font-size:.9rem}
+.bar .track{height:10px;background:var(--bg);border-radius:6px;overflow:hidden}
+.bar .fill{height:100%;background:var(--yolk);border-radius:6px}
+.bar span:last-child{font-variant-numeric:tabular-nums}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav button{font:inherit;font-size:.72rem;font-weight:600;border:0;background:transparent;color:var(--muted);padding:8px 0 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;min-height:58px}
+nav button svg{width:24px;height:24px}
+nav button[aria-current="page"]{color:var(--leaf)}
+.scan-preview{max-height:180px;border-radius:10px;object-fit:cover;width:100%}
+.lines{display:flex;flex-direction:column;gap:10px}
+.line{display:grid;grid-template-columns:1.4fr .8fr .8fr 34px;gap:6px;align-items:center}
+.line input,.line select{min-height:42px;padding:8px;font-size:.9rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;font-size:.9rem;z-index:20}
+@media (prefers-reduced-motion:no-preference){.btn,.chip,.stepper button{transition:transform .08s}.btn:active,.stepper button:active,.chip:active{transform:scale(.96)}}
+.hero-ic{width:88px;height:88px;border-radius:22px;align-self:center}
+.welcome h1{text-align:center}
+.welcome p{margin:0}
+.ver{color:var(--muted);font-size:.78rem;text-align:center;padding:4px 0 8px}
+body.onboarding nav{display:none}
+@media (max-width:420px){h1{font-size:1.2rem}header .sub{font-size:.78rem}.flock{padding:6px 10px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div><h1>Carnet du poulailler</h1><div class="sub" id="today"></div></div>
+    <div style="display:flex;gap:8px;align-items:center"><button class="flock" id="themeBtn" type="button" aria-label="Changer le thème jour ou nuit">☀️</button><button class="flock" id="flockBtn" type="button" aria-label="Modifier le nombre de poules">🐔 <span id="flockN">18</span> poules</button></div>
+  </header>
+  <div id="status" class="note" hidden></div>
+
+  <!-- BIENVENUE (premier lancement) -->
+  <section class="view welcome" id="v-bienvenue" hidden>
+    <div class="panel">
+      <img class="hero-ic" src="icons/icon-192.png" alt="">
+      <h1>Bienvenue !</h1>
+      <p>Notez chaque jour les œufs ramassés, vos achats d'aliments et vos ventes. L'appli calcule le taux de ponte, le coût d'une douzaine et votre marge.</p>
+      <p class="sub">Vos données restent sur ce téléphone : pas de compte, rien n'est envoyé sur Internet.</p>
+      <div class="field"><label for="wHens">Combien avez-vous de poules ?</label>
+        <div class="stepper small"><button type="button" data-step="wHens:-1" aria-label="Moins un">−</button><input id="wHens" type="number" inputmode="numeric" min="1" value="6"><button type="button" data-step="wHens:1" aria-label="Plus un">+</button></div>
+      </div>
+      <div class="field"><label for="wPrice">Prix de vente d'un œuf (€)</label><input id="wPrice" type="number" inputmode="decimal" step="0.01" min="0" value="0.35"><span class="sub">Laissez 0,35 € si vous ne vendez pas d'œufs, vous pourrez le changer plus tard.</span></div>
+      <button class="btn" type="button" id="wGo">Commencer</button>
+      <button class="btn ghost" type="button" id="wRestore">J'ai déjà une sauvegarde</button>
+    </div>
+  </section>
+
+  <!-- PONTE -->
+  <section class="view" id="v-ponte" hidden>
+    <div class="note" id="bRemind" hidden></div>
+    <div class="note" id="pRemind" hidden></div>
+    <div class="panel">
+      <div class="field"><label for="pDate">Jour</label><input type="date" id="pDate"></div>
+      <div class="field"><label for="pEggs">Œufs ramassés</label>
+        <div class="stepper"><button type="button" data-step="pEggs:-1" aria-label="Moins un">−</button><input id="pEggs" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pEggs:1" aria-label="Plus un">+</button></div>
+      </div>
+      <div class="field"><label for="pBroken">Œufs cassés</label>
+        <div class="stepper small"><button type="button" data-step="pBroken:-1" aria-label="Moins un">−</button><input id="pBroken" type="number" inputmode="numeric" min="0" value="0"><button type="button" data-step="pBroken:1" aria-label="Plus un">+</button></div>
+      </div>
+      <div class="sub" id="pRate"></div>
+      <div class="note" id="pStock"></div>
+      <button class="btn" id="pSave" type="button">Enregistrer la ponte</button>
+    </div>
+    <div class="panel"><h2>7 derniers jours</h2><div class="sub">Touchez un jour pour le corriger.</div><div class="list" id="pList"></div></div>
+  </section>
+
+  <!-- ACHATS -->
+  <section class="view" id="v-achats" hidden>
+    <div class="panel">
+      <h2>Ajouter un achat</h2>
+      <div class="sub">Un sac d'aliment, de la paille, un vermifuge… Une ligne par article du ticket.</div>
+      <div class="row">
+        <div class="field"><label for="aDate">Date</label><input type="date" id="aDate"></div>
+        <div class="field"><label for="aItem">Article</label><select id="aItem"></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="aKg">Quantité (kg)</label><input id="aKg" type="number" inputmode="decimal" step="0.1" min="0" placeholder="25"></div>
+        <div class="field"><label for="aPrice">Prix payé (€)</label><input id="aPrice" type="number" inputmode="decimal" step="0.01" min="0" placeholder="9,50"></div>
+      </div>
+      <div class="field"><label for="aShop">Magasin (facultatif)</label><input id="aShop"></div>
+      <button class="btn" id="aSave" type="button">Ajouter l'achat</button>
+    </div>
+    <div class="panel"><h2>Derniers achats</h2><div class="list" id="aList"></div></div>
+  </section>
+
+  <!-- VENTES -->
+  <section class="view" id="v-ventes" hidden>
+    <div class="panel">
+      <div class="seg"><button type="button" id="vModeSale" aria-pressed="true">Vente</button><button type="button" id="vModeGift" aria-pressed="false">Don</button></div>
+      <div class="sub">Les œufs ni vendus ni donnés comptent automatiquement pour la maison.</div>
+      <div class="row">
+        <div class="field"><label for="vDate">Date</label><input type="date" id="vDate"></div>
+        <div class="field"><label for="vClient">Client</label><input id="vClient" list="clients" placeholder="Voisine, collègue…"><datalist id="clients"></datalist></div>
+      </div>
+      <div class="field"><label for="vEggs">Nombre d'œufs</label>
+        <div class="chips" id="vQuick" style="margin-bottom:4px"><button class="chip" type="button" data-q="6">Boîte de 6</button><button class="chip" type="button" data-q="10">10</button><button class="chip" type="button" data-q="12">Douzaine</button><button class="chip" type="button" data-q="30">Plateau 30</button></div>
+        <div class="stepper small"><button type="button" data-step="vEggs:-1" aria-label="Moins un">−</button><input id="vEggs" type="number" inputmode="numeric" min="0" value="6"><button type="button" data-step="vEggs:1" aria-label="Plus un">+</button></div>
+      </div>
+      <div class="row" id="vMoney">
+        <div class="field"><label for="vPrice">Montant (€)</label><input id="vPrice" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div class="field"><label>Payé ?</label><div class="chips"><button class="chip" type="button" id="vPaid" aria-pressed="true">Oui</button><button class="chip" type="button" id="vUnpaid" aria-pressed="false">Pas encore</button></div></div>
+      </div>
+      <button class="btn" id="vSave" type="button">Enregistrer la vente</button>
+    </div>
+    <div class="panel"><h2>Dernières sorties d'œufs</h2><div class="list" id="vList"></div></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="view" id="v-stats" hidden>
+    <div class="seg"><button type="button" id="sgM" aria-pressed="true">Mois</button><button type="button" id="sgY" aria-pressed="false">Année</button></div>
+    <div class="period"><button type="button" id="prev" aria-label="Période précédente">‹</button><h2 id="pLabel"></h2><button type="button" id="next" aria-label="Période suivante">›</button></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="note" id="cmp"></div>
+    <div class="panel"><h2 id="chartTitle">Œufs ramassés</h2><div id="chart"></div></div>
+    <div class="panel"><h2>Achats par article</h2><div class="bars" id="byItem"></div></div>
+    <div class="panel">
+      <h2>Mes poules</h2>
+      <div class="list" id="lotList"></div>
+      <div class="kpis" id="lotKpis"></div>
+      <details>
+        <summary class="sub" style="cursor:pointer;padding:6px 0">+ Ajouter un lot de poules</summary>
+        <div class="view" style="padding-top:10px">
+          <div class="row">
+            <div class="field"><label for="lDate">Date d'achat</label><input type="date" id="lDate"></div>
+            <div class="field"><label for="lNb">Nombre</label><input id="lNb" type="number" inputmode="numeric" min="1" placeholder="6"></div>
+          </div>
+          <div class="field"><label for="lDesc">Description</label><input id="lDesc" placeholder="Poulettes noires"></div>
+          <div class="sub">La date de naissance sert à afficher l'âge. Laissez-la vide si vous ne la connaissez pas.</div>
+          <div class="row">
+            <div class="field"><label for="lBirth">Date de naissance</label><input id="lBirth" type="date"></div>
+            <div class="field"><label for="lPrix">Prix par poule (€)</label><input id="lPrix" type="number" inputmode="decimal" step="0.01" min="0"></div>
+          </div>
+          <button class="btn" type="button" id="lSave">Ajouter le lot</button>
+        </div>
+      </details>
+    </div>
+    <div class="panel">
+      <h2>Vie du poulailler</h2>
+      <div class="sub">Décès, poule disparue, vendue ou nouvelle arrivée : le nombre de poules se met à jour tout seul.</div>
+      <div class="list" id="evList"></div>
+      <details>
+        <summary class="sub" style="cursor:pointer;padding:6px 0">+ Noter un événement</summary>
+        <div class="view" style="padding-top:10px">
+          <div class="row">
+            <div class="field"><label for="eDate">Date</label><input type="date" id="eDate"></div>
+            <div class="field"><label for="eType">Événement</label><select id="eType"><option value="deces">Décès</option><option value="perte">Disparue / prédateur</option><option value="depart">Vendue ou donnée</option><option value="arrivee">Arrivée</option></select></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="eNb">Nombre</label><input id="eNb" type="number" inputmode="numeric" min="1" value="1"></div>
+            <div class="field"><label for="eNote">Remarque</label><input id="eNote" placeholder="Renard, maladie…"></div>
+          </div>
+          <button class="btn" type="button" id="eSave">Enregistrer l'événement</button>
+        </div>
+      </details>
+    </div>
+    <div class="panel" id="unpaidBox" hidden><h2>Ventes pas encore payées</h2><div class="list" id="unpaidList"></div></div>
+    <div class="panel">
+      <h2>Exporter vers Excel</h2>
+      <div class="sub">Télécharge toutes vos saisies (ponte, achats, ventes et bilan mois par mois) dans un fichier .xlsx.</div>
+      <button class="btn ghost" type="button" id="exportBtn">⬇ Télécharger le fichier Excel</button>
+    </div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="view" id="v-reglages" hidden>
+    <div class="panel">
+      <h2>Réglages</h2>
+      <div class="field"><label for="cHens">Nombre de poules</label><input id="cHens" type="number" inputmode="numeric" min="1"></div>
+      <div class="field"><label for="cPrice">Prix de vente par œuf (€)</label><input id="cPrice" type="number" inputmode="decimal" step="0.01" min="0"><span class="sub">0,35 € par œuf ≈ 2,10 € la boîte de 6.</span></div>
+      <button class="btn" type="button" id="cSave">Enregistrer</button>
+    </div>
+    <div class="panel" id="installBox" hidden>
+      <h2>Installer l'appli</h2>
+      <div class="sub">Ajoute le Carnet du poulailler sur l'écran d'accueil, comme une vraie appli. Elle marche aussi sans Internet.</div>
+      <button class="btn yolk" type="button" id="installBtn">📲 Installer sur ce téléphone</button>
+    </div>
+    <div class="panel">
+      <h2>Sauvegarde</h2>
+      <div class="sub">Vos saisies sont enregistrées uniquement sur ce téléphone. Si vous le perdez ou le changez, seule une sauvegarde permet de les retrouver.</div>
+      <div class="note" id="bInfo"></div>
+      <button class="btn" type="button" id="bSave">⬇ Faire une sauvegarde</button>
+      <button class="btn ghost" type="button" id="bShare" hidden>Envoyer la sauvegarde (mail, WhatsApp…)</button>
+      <input type="file" id="bFile" accept=".json,application/json" hidden>
+      <button class="btn ghost" type="button" id="bLoad">Restaurer une sauvegarde</button>
+    </div>
+    <div class="panel">
+      <h2>Tout effacer</h2>
+      <div class="sub">Supprime toutes les saisies de ce téléphone. Faites une sauvegarde avant.</div>
+      <button class="btn ghost" type="button" id="wipeBtn" style="color:var(--bad)">Effacer toutes les données</button>
+    </div>
+    <div class="ver">Carnet du poulailler · version test <span id="verN"></span></div>
+  </section>
+</div>
+
+<nav><div class="in">
+  <button type="button" data-tab="ponte" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c-3.6 0-6.5 5.2-6.5 9.4A6.5 6.5 0 0 0 12 19a6.5 6.5 0 0 0 6.5-6.6C18.5 8.2 15.6 3 12 3Z"/></svg>Ponte</button>
+  <button type="button" data-tab="achats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/></svg>Achats</button>
+  <button type="button" data-tab="ventes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M15 9.2a3.4 3.4 0 1 0 0 5.6M7.5 11h5M7.5 13.2h5"/></svg>Ventes</button>
+  <button type="button" data-tab="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></svg>Stats</button>
+  <button type="button" data-tab="reglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Réglages</button>
+</div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script src="lib/xlsx.full.min.js" defer></script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const FEEDS = ["Blé","Maïs","Granulés","Mélange ponte","Orge","Coquilles d'huîtres","Son","Graines diverses"];
+const OTHERS = ["Paille / litière","Soins / vermifuge","Matériel","Autre"];
+const ITEMS = [...FEEDS, ...OTHERS];
+const eur = n => (n||0).toLocaleString("fr-FR",{style:"currency",currency:"EUR"});
+const num = (n,d=0) => (n||0).toLocaleString("fr-FR",{maximumFractionDigits:d,minimumFractionDigits:0});
+const iso = d => { const z=new Date(d.getTime()-d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+const todayISO = () => iso(new Date());
+const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"});
+const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const VERSION = "0.1";
+const COLS = ["ponte","achats","ventes","lots","evenements"];
+const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
+
+/* ---------- stockage local (sur le téléphone) ---------- */
+const KEY = "carnet-poulailler.v1";
+let data = null;
+function blank(){ const d = { config: {}, meta: {} }; for (const c of COLS) d[c] = {}; return d; }
+function readStore(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(KEY)); } catch(e){}
+  const b = blank();
+  if (!d || typeof d !== "object") return b;
+  for (const k of Object.keys(b)) if (!d[k] || typeof d[k] !== "object") d[k] = b[k];
+  return d;
+}
+function syncState(){
+  for (const c of COLS) state[c] = Object.entries(data[c]).map(([id,o]) => ({ id, ...o }));
+  state.cfg = { poules: 6, prixOeuf: 0.35, ...(data.config.main||{}) };
+}
+function commit(){
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch(e){ data = readStore(); syncState(); renderAll(); status("Enregistrement impossible : la mémoire de l'appli est pleine ou bloquée.", true); throw e; }
+  syncState(); renderAll();
+}
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const db = {
+  collection: c => ({ add: async o => { const id = newId(); data[c][id] = o; commit(); return { id }; } }),
+  doc: p => { const i = p.indexOf("/"), c = p.slice(0,i), id = p.slice(i+1); return {
+    set: async o => { data[c][id] = o; commit(); },
+    update: async o => { data[c][id] = { ...(data[c][id]||{}), ...o }; commit(); },
+    delete: async () => { delete data[c][id]; commit(); }
+  }; }
+};
+data = readStore(); syncState();
+window.addEventListener("storage", e => { if (e.key === KEY) { data = readStore(); syncState(); renderAll(); } });
+try { navigator.storage?.persist?.(); } catch(e){}
+let statMode = "m", statRef = new Date();
+
+/* jour / nuit */
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+const paintTheme = () => { $("themeBtn").textContent = isDark() ? "🌙" : "☀️"; $("themeBtn").title = isDark() ? "Mode nuit (toucher pour passer en jour)" : "Mode jour (toucher pour passer en nuit)"; };
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
+paintTheme();
+$("themeBtn").onclick = () => { const t = isDark() ? "light" : "dark"; document.documentElement.dataset.theme = t; try { localStorage.setItem("theme", t); } catch(e){} paintTheme(); toast(t === "dark" ? "Mode nuit" : "Mode jour"); };
+$("today").textContent = new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+for (const id of ["pDate","aDate","vDate"]) $(id).value = todayISO();
+$("aItem").innerHTML = `<optgroup label="Aliments">${FEEDS.map(f=>`<option>${esc(f)}</option>`).join("")}</optgroup><optgroup label="Autres dépenses">${OTHERS.map(f=>`<option>${esc(f)}</option>`).join("")}</optgroup>`;
+
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.h); toast.h=setTimeout(()=>t.hidden=true,2200); }
+function status(msg, bad){ const s=$("status"); s.hidden=!msg; s.textContent=msg||""; s.classList.toggle("bad",!!bad); }
+
+/* ---------- tabs ---------- */
+let tab = "ponte";
+function show(name){
+  tab = name;
+  for (const v of ["bienvenue","ponte","achats","ventes","stats","reglages"]) $("v-"+v).hidden = v!==name;
+  document.body.classList.toggle("onboarding", name==="bienvenue");
+  if (name==="reglages") { $("cHens").value = state.cfg.poules; $("cPrice").value = state.cfg.prixOeuf; renderBackup(); }
+  document.querySelectorAll("nav button").forEach(b => b.dataset.tab===name ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
+  if (name==="stats") renderStats();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.tab));
+$("flockBtn").onclick = () => show("reglages");
+
+/* ---------- steppers ---------- */
+document.querySelectorAll("[data-step]").forEach(b => b.onclick = () => {
+  const [id, d] = b.dataset.step.split(":"); const el=$(id);
+  el.value = Math.max(0, (parseInt(el.value)||0) + +d); el.dispatchEvent(new Event("input"));
+});
+
+/* ---------- delete with in-page confirm ---------- */
+function delBtn(col, id){ return `<button class="del" type="button" data-del="${col}/${esc(id)}" aria-label="Supprimer">Suppr.</button>`; }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-del]"); if (!b) return;
+  if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent="Confirmer"; setTimeout(()=>{b.classList.remove("armed"); b.textContent="Suppr.";},3000); return; }
+  try { await db.doc(b.dataset.del).delete(); toast("Supprimé"); } catch(err){ toast("Suppression impossible"); }
+});
+
+/* ---------- PONTE ---------- */
+function loadPonteForm(){
+  const d = state.ponte.find(p => p.date === $("pDate").value);
+  $("pEggs").value = d ? d.oeufs : 0; $("pBroken").value = d ? (d.casses||0) : 0;
+  $("pSave").textContent = d ? "Mettre à jour ce jour" : "Enregistrer la ponte";
+  updRate();
+}
+function updRate(){
+  const n = parseInt($("pEggs").value)||0, h = state.cfg.poules||1;
+  $("pRate").textContent = `Taux de ponte : ${Math.round(n/h*100)} % (${n} œufs pour ${h} poules)`;
+}
+$("pEggs").oninput = updRate;
+$("pDate").onchange = loadPonteForm;
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-edit]"); if (!t) return;
+  $("pDate").value = t.dataset.edit; loadPonteForm(); window.scrollTo({top:0, behavior:"smooth"}); $("pEggs").focus({preventScroll:true});
+});
+$("pSave").onclick = async () => {
+  const date = $("pDate").value; if (!date) return;
+  $("pSave").disabled = true;
+  try {
+    await db.doc("ponte/"+date).set({ date, oeufs: parseInt($("pEggs").value)||0, casses: parseInt($("pBroken").value)||0, poules: state.cfg.poules });
+    toast("Ponte enregistrée");
+  } catch(e){ toast("Échec de l'enregistrement"); }
+  $("pSave").disabled = false;
+};
+function renderPonte(){
+  const got = state.ponte.reduce((s,p)=>s+p.oeufs-(p.casses||0),0), out = state.ventes.reduce((s,v)=>s+v.oeufs,0);
+  $("pStock").innerHTML = `<b>${num(Math.max(0,got-out))} œufs pour la maison</b><br><span class="sub">Tous les œufs ramassés qui ne sont ni cassés, ni vendus, ni donnés.</span>`;
+  const days = [...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-i); return iso(d); });
+  const by = Object.fromEntries(state.ponte.map(p=>[p.date,p]));
+  $("pList").innerHTML = days.map(d => {
+    const p = by[d];
+    return `<div class="item"><div class="t" data-edit="${d}" style="cursor:pointer"><b>${fmtDay(d)}</b>${p ? `<small>${Math.round(p.oeufs/(p.poules||state.cfg.poules)*100)} % de ponte${p.casses?` · ${p.casses} cassé(s)`:""}</small>` : `<small>Pas encore saisi</small>`}</div><div class="v">${p ? p.oeufs+" 🥚" : "–"}</div>${p ? delBtn("ponte", d) : "<span></span>"}</div>`;
+  }).join("");
+  // rappel de saisie
+  const first = state.ponte.reduce((m,p)=>!m||p.date<m?p.date:m, null);
+  const late = new Date().getHours() >= 18;
+  const missing = first ? days.filter(d => d >= first && !by[d] && (d !== todayISO() || late)).reverse() : [];
+  $("pRemind").hidden = !(state.loaded && missing.length);
+  $("pRemind").innerHTML = missing.length ? `<b>${missing.length===1?"Un jour n'est pas encore noté":missing.length+" jours ne sont pas encore notés"}</b><div class="chips" style="margin-top:8px">${missing.map(d=>`<button class="chip" type="button" data-edit="${d}">${fmtDay(d)}</button>`).join("")}</div>` : "";
+  const cur = by[$("pDate").value];
+  $("pSave").textContent = cur ? "Mettre à jour ce jour" : "Enregistrer la ponte";
+  updRate();
+}
+
+/* ---------- ACHATS ---------- */
+$("aSave").onclick = async () => {
+  const prix = toNum($("aPrice").value); if (!prix) { toast("Indiquez le prix payé"); return; }
+  $("aSave").disabled = true;
+  try {
+    await db.collection("achats").add({ date: $("aDate").value || todayISO(), article: $("aItem").value, kg: toNum($("aKg").value), prix, magasin: $("aShop").value.trim(), source: "manuel" });
+    $("aKg").value = ""; $("aPrice").value = ""; toast("Achat ajouté");
+  } catch(e){ toast("Échec de l'enregistrement"); }
+  $("aSave").disabled = false;
+};
+function renderAchats(){
+  const list = [...state.achats].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  $("aList").innerHTML = list.length ? list.map(a => `<div class="item"><div class="t"><b>${esc(a.article)}</b>${a.source==="ticket"?' <span class="pill">ticket</span>':""}<small>${fmtDay(a.date)}${a.kg?` · ${num(a.kg,1)} kg · ${eur(a.prix/a.kg)}/kg`:""}${a.magasin?` · ${esc(a.magasin)}`:""}</small></div><div class="v">${eur(a.prix)}</div>${delBtn("achats",a.id)}</div>`).join("")
+    : `<div class="empty">Aucun achat pour l'instant.</div>`;
+}
+
+/* ---------- VENTES ---------- */
+let paid = true, priceTouched = false;
+const setPaid = v => { paid=v; $("vPaid").setAttribute("aria-pressed", v); $("vUnpaid").setAttribute("aria-pressed", !v); };
+$("vPaid").onclick = () => setPaid(true); $("vUnpaid").onclick = () => setPaid(false);
+let mode = "vente", gift = false;
+const MODES = { vente: ["vModeSale","Enregistrer la vente","Voisine, collègue…","Client"], don: ["vModeGift","Enregistrer le don","Famille, voisin…","À qui"] };
+const setMode = m => { mode = m; gift = m !== "vente";
+  for (const [k,[id]] of Object.entries(MODES)) $(id).setAttribute("aria-pressed", k===m);
+  $("vMoney").hidden = gift; $("vSave").textContent = MODES[m][1]; $("vClient").placeholder = MODES[m][2];
+  document.querySelector('label[for="vClient"]').textContent = MODES[m][3]; };
+$("vModeSale").onclick = () => setMode("vente"); $("vModeGift").onclick = () => setMode("don");
+const autoPrice = () => { if (!priceTouched) $("vPrice").value = ((parseInt($("vEggs").value)||0) * state.cfg.prixOeuf).toFixed(2); };
+$("vEggs").oninput = autoPrice;
+$("vPrice").oninput = () => priceTouched = true;
+document.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { $("vEggs").value = b.dataset.q; autoPrice(); });
+$("vSave").onclick = async () => {
+  const oeufs = parseInt($("vEggs").value)||0; if (!oeufs) { toast("Indiquez le nombre d'œufs"); return; }
+  $("vSave").disabled = true;
+  try {
+    await db.collection("ventes").add({ date: $("vDate").value || todayISO(), client: $("vClient").value.trim(), oeufs, prix: gift ? 0 : toNum($("vPrice").value), paye: gift ? true : paid, type: mode });
+    toast(mode==="don" ? "Don enregistré" : mode==="maison" ? "Conso maison enregistrée" : "Vente enregistrée"); priceTouched=false; setPaid(true); autoPrice();
+  } catch(e){ toast("Échec de l'enregistrement"); }
+  $("vSave").disabled = false;
+};
+function venteRow(v){
+  const don = v.type === "don", home = v.type === "maison";
+  return `<div class="item"><div class="t"><b>${esc(v.client)||(don?"Don":home?"Maison":"Client")}</b> ${don?'<span class="pill">don</span>':home?'<span class="pill">maison</span>':v.paye?"":'<span class="pill warn">à payer</span>'}<small>${fmtDay(v.date)} · ${v.oeufs} œufs</small></div><div class="v">${don?"offert":home?"–":eur(v.prix)}</div>${v.paye?delBtn("ventes",v.id):`<button class="del" type="button" data-pay="${esc(v.id)}">Payé</button>`}</div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-pay]"); if (!b) return;
+  try { await db.doc("ventes/"+b.dataset.pay).update({ paye: true }); toast("Marquée payée"); } catch(err){ toast("Échec"); }
+});
+function renderVentes(){
+  const list = [...state.ventes].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  $("vList").innerHTML = list.length ? list.map(venteRow).join("") : `<div class="empty">Aucune sortie d'œufs pour l'instant.</div>`;
+  const clients = [...new Set(state.ventes.map(v=>v.client).filter(Boolean))];
+  $("clients").innerHTML = clients.map(c=>`<option value="${esc(c)}">`).join("");
+  autoPrice();
+}
+
+/* ---------- STATS ---------- */
+$("sgM").onclick = () => { statMode="m"; $("sgM").setAttribute("aria-pressed",true); $("sgY").setAttribute("aria-pressed",false); renderStats(); };
+$("sgY").onclick = () => { statMode="y"; $("sgY").setAttribute("aria-pressed",true); $("sgM").setAttribute("aria-pressed",false); renderStats(); };
+$("prev").onclick = () => { statMode==="m" ? statRef.setMonth(statRef.getMonth()-1,1) : statRef.setFullYear(statRef.getFullYear()-1); renderStats(); };
+$("next").onclick = () => { statMode==="m" ? statRef.setMonth(statRef.getMonth()+1,1) : statRef.setFullYear(statRef.getFullYear()+1); renderStats(); };
+
+function renderStats(){
+  const y = statRef.getFullYear(), m = statRef.getMonth();
+  const pre = statMode==="m" ? `${y}-${String(m+1).padStart(2,"0")}` : `${y}`;
+  $("pLabel").textContent = statMode==="m" ? new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y);
+  const P = state.ponte.filter(p=>p.date.startsWith(pre)), A = state.achats.filter(a=>a.date.startsWith(pre)), V = state.ventes.filter(v=>v.date.startsWith(pre));
+  const eggs = P.reduce((s,p)=>s+p.oeufs,0), henDays = P.reduce((s,p)=>s+(p.poules||state.cfg.poules),0);
+  const T_ = t => V.filter(v=>(v.type||"vente")===t).reduce((s,v)=>s+v.oeufs,0), sold = T_("vente"), given = T_("don"), broken = P.reduce((s,p)=>s+(p.casses||0),0), home = Math.max(0, eggs - broken - sold - given - T_("maison")) + T_("maison"), rec = V.reduce((s,v)=>s+v.prix,0);
+  const feed = A.filter(a=>FEEDS.includes(a.article)), feedEur = feed.reduce((s,a)=>s+a.prix,0), feedKg = feed.reduce((s,a)=>s+(a.kg||0),0);
+  const other = A.filter(a=>!FEEDS.includes(a.article)).reduce((s,a)=>s+a.prix,0);
+  const marge = rec - feedEur - other;
+  const k = [
+    ["hero", eur(marge), "Marge (ventes − achats)", marge<0],
+    ["", num(eggs), "Œufs ramassés"],
+    ["", P.length ? num(eggs/P.length,1) : "–", `Œufs par jour (${P.length} j saisis)`],
+    ["", henDays ? Math.round(eggs/henDays*100)+" %" : "–", "Taux de ponte"],
+    ["", `${num(sold)} / ${num(given)} / ${num(home)}`, `Vendus / donnés / maison${broken?` · ${broken} cassé(s)`:""}`],
+    ["", eur(rec), "Recettes"],
+    ["", eur(feedEur), `Aliments (${num(feedKg)} kg)`],
+    ["", eur(other), "Autres dépenses"],
+    ["", eggs ? eur((feedEur+other)/eggs*12) : "–", "Coût d'une douzaine"],
+  ];
+  {
+    const pp = statMode==="m" ? `${y-1}-${String(m+1).padStart(2,"0")}` : `${y-1}`;
+    const PP = state.ponte.filter(p=>p.date.startsWith(pp)), pe = PP.reduce((s,p)=>s+p.oeufs,0);
+    const lbl = statMode==="m" ? new Date(y-1,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y-1);
+    if (!PP.length) $("cmp").innerHTML = `<b>Comparaison avec ${lbl}</b><br><span class="sub">Pas encore de données pour ${lbl}. La comparaison apparaîtra automatiquement l'an prochain.</span>`;
+    else {
+      const a = P.length ? eggs/P.length : 0, b = pe/PP.length, diff = b ? Math.round((a-b)/b*100) : 0;
+      $("cmp").innerHTML = `<b>Comparaison avec ${lbl}</b><br>${num(pe)} œufs (${num(b,1)} par jour) contre ${num(eggs)} (${num(a,1)} par jour) maintenant${P.length?` : <b class="${diff<0?"neg":""}">${diff>0?"+":""}${diff} %</b> par jour`:""}.`;
+    }
+  }
+  $("kpis").innerHTML = k.map(([c,n,l,neg]) => `<div class="kpi ${c}"><div class="n ${neg?"neg":""}">${n}</div><div class="l">${l}</div></div>`).join("");
+
+  // chart
+  let labels, vals;
+  if (statMode==="m"){ const nd=new Date(y,m+1,0).getDate(); labels=[...Array(nd)].map((_,i)=>i+1); const by={}; P.forEach(p=>by[+p.date.slice(8)]=p.oeufs); vals=labels.map(d=>by[d]??null); $("chartTitle").textContent="Œufs ramassés par jour"; }
+  else { labels=["J","F","M","A","M","J","J","A","S","O","N","D"]; vals=labels.map((_,i)=>{ const pp=P.filter(p=>+p.date.slice(5,7)===i+1); return pp.length?pp.reduce((s,p)=>s+p.oeufs,0):null; }); $("chartTitle").textContent="Œufs ramassés par mois"; }
+  $("chart").innerHTML = barChart(labels, vals);
+
+  // by item
+  const byItem = {}; A.forEach(a => { const o=byItem[a.article]??={eur:0,kg:0}; o.eur+=a.prix; o.kg+=a.kg||0; });
+  const ent = Object.entries(byItem).sort((a,b)=>b[1].eur-a[1].eur), max = Math.max(1,...ent.map(e=>e[1].eur));
+  $("byItem").innerHTML = ent.length ? ent.map(([n,o]) => `<div class="bar"><span>${esc(n)}</span><div class="track"><div class="fill" style="width:${o.eur/max*100}%"></div></div><span>${eur(o.eur)}${o.kg?` · ${num(o.kg)} kg`:""}</span></div>`).join("") : `<div class="empty">Aucun achat sur cette période.</div>`;
+
+  const unpaid = state.ventes.filter(v=>!v.paye);
+  $("unpaidBox").hidden = !unpaid.length; $("unpaidList").innerHTML = unpaid.map(venteRow).join("");
+}
+function barChart(labels, vals){
+  const W=340,H=150,pl=26,pb=18,pt=8, n=labels.length, max=Math.max(4,...vals.map(v=>v||0));
+  const step=Math.ceil(max/4/ (max>20?5:1))*(max>20?5:1), top=step*4, bw=(W-pl)/n;
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Graphique des œufs ramassés">`;
+  for(let i=0;i<=4;i++){ const yv=H-pb-(H-pb-pt)*i/4; s+=`<line x1="${pl}" x2="${W}" y1="${yv}" y2="${yv}" stroke="var(--line)" stroke-width="1"/><text x="${pl-4}" y="${yv+3}" text-anchor="end">${step*i}</text>`; }
+  vals.forEach((v,i)=>{ if(v==null) return; const h=(H-pb-pt)*v/top; s+=`<rect x="${pl+i*bw+bw*.15}" y="${H-pb-h}" width="${bw*.7}" height="${Math.max(h,1)}" rx="2" fill="var(--yolk)"><title>${labels[i]} : ${v} œufs</title></rect>`; });
+  labels.forEach((l,i)=>{ if(n>12 && (i+1)%5 && i) return; s+=`<text x="${pl+i*bw+bw/2}" y="${H-4}" text-anchor="middle">${l}</text>`; });
+  return s+"</svg>";
+}
+
+/* ---------- export Excel ---------- */
+function saveFile(name, blob){
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+$("exportBtn").onclick = async () => {
+  if (!window.XLSX) { toast("Export pas encore prêt, réessayez"); return; }
+  const by = k => (a,b) => a[k].localeCompare(b[k]);
+  const ponte = [...state.ponte].sort(by("date")).map(p => ({ "Date": p.date, "Poules": p.poules||state.cfg.poules, "Œufs ramassés": p.oeufs, "Cassés": p.casses||0, "Taux de ponte": Math.round(p.oeufs/(p.poules||state.cfg.poules)*1000)/10 + " %" }));
+  const achats = [...state.achats].sort(by("date")).map(a => ({ "Date": a.date, "Article": a.article, "Catégorie": FEEDS.includes(a.article)?"Aliment":"Autre", "Quantité (kg)": a.kg||"", "Prix payé (€)": a.prix, "Prix au kg (€)": a.kg ? Math.round(a.prix/a.kg*100)/100 : "", "Magasin": a.magasin||"", "Saisie": a.source||"" }));
+  const ventes = [...state.ventes].sort(by("date")).map(v => ({ "Date": v.date, "Type": v.type==="don"?"Don":v.type==="maison"?"Maison":"Vente", "Client": v.client||"", "Œufs": v.oeufs, "Montant (€)": v.prix, "Payé": (v.type==="don"||v.type==="maison")?"":(v.paye?"Oui":"Non") }));
+  const months = [...new Set([...state.ponte,...state.achats,...state.ventes].map(x => x.date.slice(0,7)))].sort();
+  const bilan = months.map(m => {
+    const P=state.ponte.filter(p=>p.date.startsWith(m)), A=state.achats.filter(a=>a.date.startsWith(m)), V=state.ventes.filter(v=>v.date.startsWith(m));
+    const eggs=P.reduce((s,p)=>s+p.oeufs,0), hd=P.reduce((s,p)=>s+(p.poules||state.cfg.poules),0);
+    const feed=A.filter(a=>FEEDS.includes(a.article)), fe=feed.reduce((s,a)=>s+a.prix,0), oth=A.filter(a=>!FEEDS.includes(a.article)).reduce((s,a)=>s+a.prix,0), rec=V.reduce((s,v)=>s+v.prix,0);
+    const r2 = n => Math.round(n*100)/100;
+    return { "Mois": m, "Œufs ramassés": eggs, "Jours saisis": P.length, "Taux de ponte": hd ? Math.round(eggs/hd*1000)/10+" %" : "", "Aliments (kg)": r2(feed.reduce((s,a)=>s+(a.kg||0),0)), "Aliments (€)": r2(fe), "Autres dépenses (€)": r2(oth), "Œufs cassés": P.reduce((s,p)=>s+(p.casses||0),0), "Œufs vendus": V.filter(v=>(v.type||"vente")==="vente").reduce((s,v)=>s+v.oeufs,0), "Œufs donnés": V.filter(v=>v.type==="don").reduce((s,v)=>s+v.oeufs,0), "Pour la maison": Math.max(0, eggs - P.reduce((s,p)=>s+(p.casses||0),0) - V.reduce((s,v)=>s+v.oeufs,0)) + V.filter(v=>v.type==="maison").reduce((s,v)=>s+v.oeufs,0), "Recettes (€)": r2(rec), "Marge (€)": r2(rec-fe-oth) };
+  });
+  const wb = XLSX.utils.book_new();
+  const add = (rows, name, cols) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ "Info": "Aucune donnée" }]); ws["!cols"] = cols.map(w=>({wch:w})); XLSX.utils.book_append_sheet(wb, ws, name); };
+  add(bilan, "Bilan mensuel", [10,14,12,13,13,13,18,11,12,12,13,13,11]);
+  add(ponte, "Ponte", [12,8,14,15,13]);
+  add(achats, "Achats", [12,20,10,13,13,13,18,8]);
+  add(ventes, "Sorties d'œufs", [12,8,20,8,12,7]);
+  const xdata = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveFile(`poulailler-${todayISO()}.xlsx`, new Blob([xdata], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })); toast("Fichier Excel téléchargé");
+};
+
+/* ---------- réglages ---------- */
+$("cSave").onclick = async () => {
+  const poules = parseInt($("cHens").value)||state.cfg.poules, prixOeuf = toNum($("cPrice").value)||state.cfg.prixOeuf;
+  try { await db.doc("config/main").set({ ...state.cfg, poules, prixOeuf }); toast("Réglages enregistrés"); } catch(e){ toast("Échec"); }
+};
+
+/* ---------- lots de poules ---------- */
+function ageTxt(lot){
+  let b;
+  if (lot.naissance) b = new Date(lot.naissance+"T12:00");
+  else if (lot.ageSemaines == null || !lot.date) return "âge inconnu (date de naissance non renseignée)";
+  else { b = new Date(lot.date+"T12:00"); b.setDate(b.getDate() - lot.ageSemaines*7); }
+  const n = new Date(); n.setHours(12,0,0,0);
+  let y = n.getFullYear()-b.getFullYear(), m = n.getMonth()-b.getMonth(), d = n.getDate()-b.getDate();
+  if (d < 0) { m--; d += new Date(n.getFullYear(), n.getMonth(), 0).getDate(); }
+  if (m < 0) { y--; m += 12; }
+  return `<b>${y} an${y>1?"s":""} ${m} mois ${d} jour${d>1?"s":""}</b> (${lot.naissance?"nées le":"nées vers le"} ${b.toLocaleDateString("fr-FR")})`;
+}
+function renderLots(){
+  const lots = [...state.lots].sort((a,b)=>(a.date||"0").localeCompare(b.date||"0"));
+  $("lotList").innerHTML = lots.length ? lots.map(l => {
+    const cost = l.prixUnitaire != null ? l.nombre * l.prixUnitaire : null;
+    return `<div class="item"><div class="t"><b>${l.nombre} ${esc(l.description||"poules")}</b><small>${l.date ? "Achetées le "+new Date(l.date+"T12:00").toLocaleDateString("fr-FR") : "Date d'achat inconnue"} · ${ageTxt(l)}${l.prixUnitaire!=null?` · ${eur(l.prixUnitaire)} pièce`:""}</small></div><div class="v">${cost!=null?eur(cost):'<span class="pill warn">prix inconnu</span>'}</div>${delBtn("lots", l.id)}</div>`;
+  }).join("") : `<div class="empty">Aucun lot enregistré.</div>`;
+  const invest = lots.reduce((s,l)=>s+(l.prixUnitaire!=null ? l.nombre*l.prixUnitaire : 0),0), nb = lots.reduce((s,l)=>s+(l.nombre||0),0);
+  const rec = state.ventes.reduce((s,v)=>s+v.prix,0), dep = state.achats.reduce((s,a)=>s+a.prix,0), marge = rec - dep;
+  $("lotKpis").innerHTML = lots.length ? `<div class="kpi"><div class="n">${eur(invest)}</div><div class="l">Achat des poules (${nb} au total)</div></div><div class="kpi"><div class="n ${marge<0?"neg":""}">${eur(marge)}</div><div class="l">Marge depuis le début du suivi</div></div><div class="kpi hero" style="grid-column:1/-1"><div class="n" style="font-size:1.4rem">${invest ? Math.max(0,Math.round(marge/invest*100))+" %" : "–"}</div><div class="l">de l'achat des poules déjà remboursé par les ventes</div></div>` : "";
+}
+$("lDate").value = todayISO();
+$("lSave").onclick = async () => {
+  const nombre = parseInt($("lNb").value)||0; if (!nombre) { toast("Indiquez le nombre de poules"); return; }
+  const prix = $("lPrix").value === "" ? null : toNum($("lPrix").value);
+  try { await db.collection("lots").add({ date: $("lDate").value || null, nombre, description: $("lDesc").value.trim() || "poules", naissance: $("lBirth").value || null, prixUnitaire: prix }); toast("Lot ajouté"); $("lNb").value=""; $("lDesc").value=""; $("lBirth").value=""; $("lPrix").value=""; }
+  catch(e){ toast("Échec de l'enregistrement"); }
+};
+
+/* ---------- événements ---------- */
+const EV = { deces:["Décès",-1], perte:["Disparue / prédateur",-1], depart:["Vendue ou donnée",-1], arrivee:["Arrivée",1] };
+$("eDate").value = todayISO();
+async function setHens(n){ await db.doc("config/main").set({ ...state.cfg, poules: Math.max(0,n) }); }
+$("eSave").onclick = async () => {
+  const nombre = parseInt($("eNb").value)||0, type = $("eType").value; if (!nombre) { toast("Indiquez le nombre"); return; }
+  $("eSave").disabled = true;
+  try {
+    await db.collection("evenements").add({ date: $("eDate").value || todayISO(), type, nombre, note: $("eNote").value.trim() });
+    await setHens(state.cfg.poules + EV[type][1]*nombre);
+    toast(`Enregistré · ${state.cfg.poules + EV[type][1]*nombre} poules`); $("eNb").value = 1; $("eNote").value = "";
+  } catch(e){ toast("Échec de l'enregistrement"); }
+  $("eSave").disabled = false;
+};
+function renderEvents(){
+  const list = [...state.evenements].sort((a,b)=>b.date.localeCompare(a.date));
+  $("evList").innerHTML = list.length ? list.map(e => `<div class="item"><div class="t"><b>${EV[e.type]?.[0]||esc(e.type)}</b><small>${fmtDay(e.date)}${e.note?` · ${esc(e.note)}`:""}</small></div><div class="v">${EV[e.type]?.[1]>0?"+":"−"}${e.nombre}</div><button class="del" type="button" data-delevt="${esc(e.id)}" aria-label="Supprimer">Suppr.</button></div>`).join("") : `<div class="empty">Aucun événement noté.</div>`;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-delevt]"); if (!b) return;
+  if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent="Confirmer"; setTimeout(()=>{b.classList.remove("armed"); b.textContent="Suppr.";},3000); return; }
+  const ev = state.evenements.find(x=>x.id===b.dataset.delevt); if (!ev) return;
+  try { await db.doc("evenements/"+ev.id).delete(); await setHens(state.cfg.poules - (EV[ev.type]?.[1]||0)*ev.nombre); toast("Supprimé, nombre de poules rétabli"); } catch(err){ toast("Suppression impossible"); }
+});
+
+function renderAll(){ $("flockN").textContent = state.cfg.poules; renderPonte(); renderAchats(); renderVentes(); renderLots(); renderEvents(); if (tab==="stats") renderStats(); }
+renderAll();
+
+/* ---------- sauvegarde ---------- */
+const nbEntries = () => COLS.reduce((s,c)=>s+Object.keys(data[c]).length,0);
+const backupBlob = () => new Blob([JSON.stringify({ app: "carnet-poulailler", format: 1, version: VERSION, date: new Date().toISOString(), data }, null, 1)], { type: "application/json" });
+const backupName = () => `sauvegarde-poulailler-${todayISO()}.json`;
+function markBackup(){ data.meta.lastBackup = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e){} renderBackup(); renderReminder(); }
+function renderBackup(){
+  const lb = data.meta.lastBackup;
+  $("bInfo").innerHTML = `${nbEntries()} saisie(s) sur ce téléphone.<br>${lb ? "Dernière sauvegarde : <b>"+new Date(lb).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})+"</b>" : "<b>Aucune sauvegarde faite pour l'instant.</b>"}`;
+}
+function renderReminder(){
+  const lb = data.meta.lastBackup, n = nbEntries();
+  const due = n >= 10 && (!lb || (Date.now() - new Date(lb)) > 30*864e5);
+  $("bRemind").hidden = !due;
+  $("bRemind").innerHTML = due ? `<b>Pensez à sauvegarder vos données</b><br><span class="sub">${lb ? "Dernière sauvegarde il y a plus d'un mois." : "Vous n'avez encore jamais fait de sauvegarde."}</span><div style="margin-top:8px"><button class="chip" type="button" id="bGo">Sauvegarder maintenant</button></div>` : "";
+  const g = $("bGo"); if (g) g.onclick = () => show("reglages");
+}
+$("bSave").onclick = () => { saveFile(backupName(), backupBlob()); markBackup(); toast("Sauvegarde téléchargée"); };
+if (navigator.canShare) {
+  try { if (navigator.canShare({ files: [new File(["{}"], "t.json", { type: "application/json" })] })) $("bShare").hidden = false; } catch(e){}
+}
+$("bShare").onclick = async () => {
+  const f = new File([backupBlob()], backupName(), { type: "application/json" });
+  try { await navigator.share({ files: [f], title: "Sauvegarde du poulailler" }); markBackup(); toast("Sauvegarde envoyée"); }
+  catch(e){ if (e?.name !== "AbortError") toast("Envoi impossible, utilisez « Faire une sauvegarde »"); }
+};
+$("bLoad").onclick = $("wRestore").onclick = () => $("bFile").click();
+$("bFile").onchange = async () => {
+  const file = $("bFile").files[0]; $("bFile").value = ""; if (!file) return;
+  let j; try { j = JSON.parse(await file.text()); } catch(e){ toast("Ce fichier n'est pas une sauvegarde valide"); return; }
+  const d = j?.app === "carnet-poulailler" ? j.data : null;
+  if (!d || typeof d !== "object" || !COLS.every(c => !d[c] || typeof d[c] === "object")) { toast("Ce fichier n'est pas une sauvegarde du Carnet du poulailler"); return; }
+  const n = COLS.reduce((s,c)=>s+Object.keys(d[c]||{}).length,0);
+  const when = j.date ? new Date(j.date).toLocaleDateString("fr-FR") : "date inconnue";
+  if (nbEntries() && !confirm(`Remplacer les ${nbEntries()} saisies de ce téléphone par la sauvegarde du ${when} (${n} saisies) ?`)) return;
+  const b = blank(); for (const k of Object.keys(b)) b[k] = (d[k] && typeof d[k] === "object") ? d[k] : b[k];
+  data = b; data.config.main ??= { poules: 6, prixOeuf: 0.35 };
+  commit(); toast(`Sauvegarde restaurée (${n} saisies)`); show("ponte"); loadPonteForm();
+};
+$("wipeBtn").onclick = () => {
+  const b = $("wipeBtn");
+  if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Touchez encore pour tout effacer"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent = "Effacer toutes les données"; }, 4000); return; }
+  data = blank(); commit(); toast("Toutes les données sont effacées"); show("bienvenue");
+};
+
+/* ---------- installation ---------- */
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; $("installBox").hidden = false; });
+window.addEventListener("appinstalled", () => { installEvt = null; $("installBox").hidden = true; toast("Appli installée"); });
+$("installBtn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch(e){} installEvt = null; $("installBox").hidden = true; };
+if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* ---------- premier lancement ---------- */
+$("wGo").onclick = async () => {
+  const poules = Math.max(1, parseInt($("wHens").value)||1), prixOeuf = toNum($("wPrice").value);
+  await db.doc("config/main").set({ poules, prixOeuf });
+  show("ponte"); loadPonteForm(); toast("C'est parti !");
+};
+$("verN").textContent = VERSION;
+
+const _renderAll = renderAll;
+renderAll = function(){ _renderAll(); renderReminder(); };
+renderAll();
+if (!data.config.main) show("bienvenue"); else { show("ponte"); loadPonteForm(); }
+})();
+</script>
