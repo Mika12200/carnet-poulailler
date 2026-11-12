@@ -5,3 +5,4 @@ Appli web installable (PWA) pour suivre un petit poulailler : ponte, achats d'al
 - Aucune donnée envoyée sur Internet : tout est stocké sur le téléphone (localStorage), avec sauvegarde / restauration en fichier JSON.
 - Fonctionne hors connexion (service worker `sw.js`). À chaque nouvelle version, changer `CACHE` dans `sw.js` et `VERSION` dans `index.html`.
 - Site statique, sans étape de build : déployé tel quel sur Vercel.
+- En ligne : https://suivi-poules.vercel.app/ (projet Vercel « suivi-poules », relié à ce dépôt : chaque push sur main est mis en ligne).
