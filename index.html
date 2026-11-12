@@ -308,8 +308,8 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.2";
-const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><path d="M10 1.5C5.6 1.5 2 8.4 2 13.6 2 18.7 5.6 22.5 10 22.5s8-3.8 8-8.9C18 8.4 14.4 1.5 10 1.5Z" fill="#E2B07A" stroke="#B9824A" stroke-width="1.2"/><ellipse cx="7" cy="9" rx="2" ry="3.2" fill="#F6DDBB" opacity=".9"/></svg>`;
+const VERSION = "0.3";
+const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
 const COLS = ["ponte","achats","ventes","lots","evenements"];
 const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
