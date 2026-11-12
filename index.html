@@ -108,6 +108,7 @@ nav button[aria-current="page"]{color:var(--leaf)}
 .welcome p{margin:0}
 .ver{color:var(--muted);font-size:.78rem;text-align:center;padding:4px 0 8px}
 body.onboarding nav{display:none}
+.egg{width:.95em;height:1.15em;vertical-align:-.18em;margin-left:2px}
 @media (max-width:420px){h1{font-size:1.2rem}header .sub{font-size:.78rem}.flock{padding:6px 10px}}
 </style>
 </head>
@@ -307,7 +308,9 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.1";
+const VERSION = "0.2";
+const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><path d="M10 1.5C5.6 1.5 2 8.4 2 13.6 2 18.7 5.6 22.5 10 22.5s8-3.8 8-8.9C18 8.4 14.4 1.5 10 1.5Z" fill="#E2B07A" stroke="#B9824A" stroke-width="1.2"/><ellipse cx="7" cy="9" rx="2" ry="3.2" fill="#F6DDBB" opacity=".9"/></svg>`;
+
 const COLS = ["ponte","achats","ventes","lots","evenements"];
 const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
 
@@ -420,7 +423,7 @@ function renderPonte(){
   const by = Object.fromEntries(state.ponte.map(p=>[p.date,p]));
   $("pList").innerHTML = days.map(d => {
     const p = by[d];
-    return `<div class="item"><div class="t" data-edit="${d}" style="cursor:pointer"><b>${fmtDay(d)}</b>${p ? `<small>${Math.round(p.oeufs/(p.poules||state.cfg.poules)*100)} % de ponte${p.casses?` · ${p.casses} cassé(s)`:""}</small>` : `<small>Pas encore saisi</small>`}</div><div class="v">${p ? p.oeufs+" 🥚" : "–"}</div>${p ? delBtn("ponte", d) : "<span></span>"}</div>`;
+    return `<div class="item"><div class="t" data-edit="${d}" style="cursor:pointer"><b>${fmtDay(d)}</b>${p ? `<small>${Math.round(p.oeufs/(p.poules||state.cfg.poules)*100)} % de ponte${p.casses?` · ${p.casses} cassé(s)`:""}</small>` : `<small>Pas encore saisi</small>`}</div><div class="v">${p ? p.oeufs+EGG : "–"}</div>${p ? delBtn("ponte", d) : "<span></span>"}</div>`;
   }).join("");
   // rappel de saisie
   const first = state.ponte.reduce((m,p)=>!m||p.date<m?p.date:m, null);
