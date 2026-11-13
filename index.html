@@ -79,7 +79,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid 
 .kpi.hero{grid-column:1/-1;background:var(--yolk-soft);border-color:transparent}
 .kpi.hero .n{font-size:2.2rem}
 .neg{color:var(--bad)}
-.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
 .seg button{font:inherit;font-weight:600;border:0;border-radius:9px;min-height:40px;background:transparent;color:var(--muted);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--leaf);color:var(--surface)}
 .period{display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -244,7 +244,7 @@ textarea:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
 
   <!-- STATS -->
   <section class="view" id="v-stats" hidden>
-    <div class="seg"><button type="button" id="sgM" aria-pressed="true">Mois</button><button type="button" id="sgY" aria-pressed="false">Année</button></div>
+    <div class="seg" id="sgBox" style="grid-template-columns:repeat(3,1fr)"><button type="button" id="sgW" aria-pressed="false">Semaine</button><button type="button" id="sgM" aria-pressed="true">Mois</button><button type="button" id="sgY" aria-pressed="false">Année</button></div>
     <div class="period"><button type="button" id="prev" aria-label="Période précédente">‹</button><h2 id="pLabel"></h2><button type="button" id="next" aria-label="Période suivante">›</button></div>
     <div class="kpis" id="kpis"></div>
     <div class="note" id="cmp"></div>
@@ -359,7 +359,7 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.5";
+const VERSION = "0.6";
 const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
 const COLS = ["ponte","achats","ventes","lots","evenements"];
@@ -544,16 +544,21 @@ function renderVentes(){
 }
 
 /* ---------- STATS ---------- */
-$("sgM").onclick = () => { statMode="m"; $("sgM").setAttribute("aria-pressed",true); $("sgY").setAttribute("aria-pressed",false); renderStats(); };
-$("sgY").onclick = () => { statMode="y"; $("sgY").setAttribute("aria-pressed",true); $("sgM").setAttribute("aria-pressed",false); renderStats(); };
-$("prev").onclick = () => { statMode==="m" ? statRef.setMonth(statRef.getMonth()-1,1) : statRef.setFullYear(statRef.getFullYear()-1); renderStats(); };
-$("next").onclick = () => { statMode==="m" ? statRef.setMonth(statRef.getMonth()+1,1) : statRef.setFullYear(statRef.getFullYear()+1); renderStats(); };
+const setStatMode = md => { statMode = md; statRef = new Date(); for (const [k,id] of [["w","sgW"],["m","sgM"],["y","sgY"]]) $(id).setAttribute("aria-pressed", k===md); renderStats(); };
+$("sgW").onclick = () => setStatMode("w"); $("sgM").onclick = () => setStatMode("m"); $("sgY").onclick = () => setStatMode("y");
+const shiftStat = k => { statMode==="w" ? statRef.setDate(statRef.getDate()+7*k) : statMode==="m" ? statRef.setMonth(statRef.getMonth()+k,1) : statRef.setFullYear(statRef.getFullYear()+k); renderStats(); };
+$("prev").onclick = () => shiftStat(-1); $("next").onclick = () => shiftStat(1);
+const monday = d => { const x = new Date(d); x.setHours(12,0,0,0); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; };
+const fmtShort = d => d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
 
 function renderStats(){
   const y = statRef.getFullYear(), m = statRef.getMonth();
   const pre = statMode==="m" ? `${y}-${String(m+1).padStart(2,"0")}` : `${y}`;
-  $("pLabel").textContent = statMode==="m" ? new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y);
-  const P = state.ponte.filter(p=>p.date.startsWith(pre)), A = state.achats.filter(a=>a.date.startsWith(pre)), V = state.ventes.filter(v=>v.date.startsWith(pre));
+  const w0 = monday(statRef), wDays = [...Array(7)].map((_,i)=>{ const d=new Date(w0); d.setDate(d.getDate()+i); return iso(d); });
+  const inP = d => statMode==="w" ? (d >= wDays[0] && d <= wDays[6]) : d.startsWith(pre);
+  $("pLabel").textContent = statMode==="w" ? `Semaine du ${fmtShort(w0)} au ${fmtShort(new Date(wDays[6]+"T12:00"))}` : statMode==="m" ? new Date(y,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y);
+  $("pLabel").style.textTransform = statMode==="w" ? "none" : "";
+  const P = state.ponte.filter(p=>inP(p.date)), A = state.achats.filter(a=>inP(a.date)), V = state.ventes.filter(v=>inP(v.date));
   const eggs = P.reduce((s,p)=>s+p.oeufs,0), henDays = P.reduce((s,p)=>s+(p.poules||state.cfg.poules),0);
   const T_ = t => V.filter(v=>(v.type||"vente")===t).reduce((s,v)=>s+v.oeufs,0), sold = T_("vente"), given = T_("don"), broken = P.reduce((s,p)=>s+(p.casses||0),0), home = Math.max(0, eggs - broken - sold - given - T_("maison")) + T_("maison"), rec = V.reduce((s,v)=>s+v.prix,0);
   const feed = A.filter(a=>FEEDS.includes(a.article)), feedEur = feed.reduce((s,a)=>s+a.prix,0), feedKg = feed.reduce((s,a)=>s+(a.kg||0),0);
@@ -572,8 +577,9 @@ function renderStats(){
   ];
   {
     const pp = statMode==="m" ? `${y-1}-${String(m+1).padStart(2,"0")}` : `${y-1}`;
-    const PP = state.ponte.filter(p=>p.date.startsWith(pp)), pe = PP.reduce((s,p)=>s+p.oeufs,0);
-    const lbl = statMode==="m" ? new Date(y-1,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y-1);
+    const pw0 = new Date(w0); pw0.setDate(pw0.getDate()-364); const pw6 = new Date(pw0); pw6.setDate(pw6.getDate()+6);
+    const PP = state.ponte.filter(p=> statMode==="w" ? (p.date >= iso(pw0) && p.date <= iso(pw6)) : p.date.startsWith(pp)), pe = PP.reduce((s,p)=>s+p.oeufs,0);
+    const lbl = statMode==="w" ? `la même semaine l'an dernier (${fmtShort(pw0)} au ${fmtShort(pw6)} ${pw6.getFullYear()})` : statMode==="m" ? new Date(y-1,m,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"}) : String(y-1);
     if (!PP.length) $("cmp").innerHTML = `<b>Comparaison avec ${lbl}</b><br><span class="sub">Pas encore de données pour ${lbl}. La comparaison apparaîtra automatiquement l'an prochain.</span>`;
     else {
       const a = P.length ? eggs/P.length : 0, b = pe/PP.length, diff = b ? Math.round((a-b)/b*100) : 0;
@@ -584,7 +590,8 @@ function renderStats(){
 
   // chart
   let labels, vals;
-  if (statMode==="m"){ const nd=new Date(y,m+1,0).getDate(); labels=[...Array(nd)].map((_,i)=>i+1); const by={}; P.forEach(p=>by[+p.date.slice(8)]=p.oeufs); vals=labels.map(d=>by[d]??null); $("chartTitle").textContent="Œufs ramassés par jour"; }
+  if (statMode==="w"){ labels=["L","M","M","J","V","S","D"]; const by=Object.fromEntries(P.map(p=>[p.date,p.oeufs])); vals=wDays.map(d=>by[d]??null); $("chartTitle").textContent="Œufs ramassés par jour"; }
+  else if (statMode==="m"){ const nd=new Date(y,m+1,0).getDate(); labels=[...Array(nd)].map((_,i)=>i+1); const by={}; P.forEach(p=>by[+p.date.slice(8)]=p.oeufs); vals=labels.map(d=>by[d]??null); $("chartTitle").textContent="Œufs ramassés par jour"; }
   else { labels=["J","F","M","A","M","J","J","A","S","O","N","D"]; vals=labels.map((_,i)=>{ const pp=P.filter(p=>+p.date.slice(5,7)===i+1); return pp.length?pp.reduce((s,p)=>s+p.oeufs,0):null; }); $("chartTitle").textContent="Œufs ramassés par mois"; }
   $("chart").innerHTML = barChart(labels, vals);
 
