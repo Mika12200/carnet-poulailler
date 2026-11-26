@@ -380,7 +380,7 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.10";
+const VERSION = "0.11";
 const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
 const COLS = ["ponte","achats","ventes","lots","evenements","avances"];
@@ -603,7 +603,7 @@ function renderAvances(){
       <details><summary class="sub" style="cursor:pointer;padding:8px 0 0">Historique (${hist.length})</summary><div class="list">${hist.map(h => h._dep
         ? `<div class="item"><div class="t"><b>Avance versée</b><small>${fmtDay(h.date)}</small></div><div class="v">+${eur(h.montant)}</div>${delBtn("avances",h.id)}</div>`
         : `<div class="item"><div class="t"><b>Retrait de ${h.oeufs} œufs</b><small>${fmtDay(h.date)}</small></div><div class="v">−${eur(h.prix)}</div>${delBtn("ventes",h.id)}</div>`).join("")}</div></details>
-    </div>`; }).join("") : `<div class="empty">Aucune avance pour l'instant.</div>`;
+    </div>`; }).join("") : `<div class="note">Aucune avance pour l'instant. Touchez d'abord <b>« + Noter une avance »</b> juste en dessous : les boutons <b>Retrait 12 œufs</b> et <b>Retrait 24 œufs</b> apparaîtront ensuite.</div>`;
 }
 $("avDate").value = todayISO();
 $("avForm").addEventListener("toggle", () => { if ($("avForm").open && !$("avMontant").value) $("avPrix12").value = state.cfg.prixDouzaine ?? 4; });
