@@ -324,7 +324,8 @@ textarea:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
     <div class="panel">
       <h2>Réglages</h2>
       <div class="field"><label for="cHens">Nombre de poules</label><input id="cHens" type="number" inputmode="numeric" min="1"></div>
-      <div class="field"><label for="cPrice">Prix de vente par œuf (€)</label><input id="cPrice" type="number" inputmode="decimal" step="0.01" min="0"><span class="sub">0,35 € par œuf ≈ 2,10 € la boîte de 6.</span></div>
+      <div class="field"><label for="cPrice">Prix de vente par œuf (€)</label><input id="cPrice" type="number" inputmode="decimal" step="0.01" min="0"><span class="sub">Utilisé pour les boîtes de 6, les plateaux, etc.</span></div>
+      <div class="field"><label for="cDz">Prix de la douzaine (€)</label><input id="cDz" type="number" inputmode="decimal" step="0.01" min="0"><span class="sub">12, 24, 36… œufs sont comptés à ce prix (4 € par défaut).</span></div>
       <button class="btn" type="button" id="cSave">Enregistrer</button>
     </div>
     <div class="panel" id="installBox" hidden>
@@ -379,11 +380,11 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.8";
+const VERSION = "0.9";
 const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
 const COLS = ["ponte","achats","ventes","lots","evenements","avances"];
-const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], avances: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
+const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], avances: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35, prixDouzaine: 4 } };
 
 /* ---------- stockage local (sur le téléphone) ---------- */
 const KEY = "carnet-poulailler.v1";
@@ -439,7 +440,7 @@ function show(name){
   tab = name;
   for (const v of ["tuto","avis","bienvenue","ponte","achats","ventes","stats","reglages"]) $("v-"+v).hidden = v!==name;
   document.body.classList.toggle("onboarding", name==="bienvenue" || name==="tuto");
-  if (name==="reglages") { $("cHens").value = state.cfg.poules; $("cPrice").value = state.cfg.prixOeuf; renderBackup(); }
+  if (name==="reglages") { $("cHens").value = state.cfg.poules; $("cPrice").value = state.cfg.prixOeuf; $("cDz").value = state.cfg.prixDouzaine ?? 4; renderBackup(); }
   document.querySelectorAll("nav button").forEach(b => b.dataset.tab===name ? b.setAttribute("aria-current","page") : b.removeAttribute("aria-current"));
   if (name==="stats") renderStats();
   window.scrollTo(0,0);
@@ -533,7 +534,7 @@ const setMode = m => { mode = m; gift = m !== "vente";
   document.querySelector('label[for="vClient"]').textContent = MODES[m][3]; avSync(); };
 $("vModeSale").onclick = () => setMode("vente"); $("vModeGift").onclick = () => setMode("don");
 const autoPrice = () => { if (priceTouched) return; const n = parseInt($("vEggs").value)||0, c = paid==="avance" ? avMatch() : null;
-  $("vPrice").value = (c ? n*c.prix12/12 : n*state.cfg.prixOeuf).toFixed(2); };
+  $("vPrice").value = (c ? n*c.prix12/12 : n && n%12===0 ? n/12*(state.cfg.prixDouzaine ?? 4) : n*state.cfg.prixOeuf).toFixed(2); };
 $("vEggs").oninput = autoPrice;
 $("vPrice").oninput = () => priceTouched = true;
 document.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { $("vEggs").value = b.dataset.q; autoPrice(); });
@@ -605,6 +606,7 @@ function renderAvances(){
     </div>`; }).join("") : `<div class="empty">Aucune avance pour l'instant.</div>`;
 }
 $("avDate").value = todayISO();
+$("avForm").addEventListener("toggle", () => { if ($("avForm").open && !$("avMontant").value) $("avPrix12").value = state.cfg.prixDouzaine ?? 4; });
 $("avSave").onclick = async () => {
   const client = $("avClient").value.trim(), montant = r2a(toNum($("avMontant").value)), prix12 = r2a(toNum($("avPrix12").value));
   if (!client) { toast("Indiquez le nom du client"); return; }
@@ -738,8 +740,8 @@ $("exportBtn").onclick = async () => {
 
 /* ---------- réglages ---------- */
 $("cSave").onclick = async () => {
-  const poules = parseInt($("cHens").value)||state.cfg.poules, prixOeuf = toNum($("cPrice").value)||state.cfg.prixOeuf;
-  try { await db.doc("config/main").set({ ...state.cfg, poules, prixOeuf }); toast("Réglages enregistrés"); } catch(e){ toast("Échec"); }
+  const poules = parseInt($("cHens").value)||state.cfg.poules, prixOeuf = toNum($("cPrice").value)||state.cfg.prixOeuf, prixDouzaine = toNum($("cDz").value)||state.cfg.prixDouzaine||4;
+  try { await db.doc("config/main").set({ ...state.cfg, poules, prixOeuf, prixDouzaine }); toast("Réglages enregistrés"); } catch(e){ toast("Échec"); }
 };
 
 /* ---------- lots de poules ---------- */
