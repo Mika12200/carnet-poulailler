@@ -70,6 +70,7 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:3px solid 
 .empty{color:var(--muted);font-size:.92rem;padding:6px 0}
 .pill{display:inline-block;font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--leaf-soft);color:var(--leaf)}
 .pill.warn{background:var(--yolk-soft);color:var(--fg)}
+.avc{border-top:1px solid var(--line);padding:4px 0 10px}.avc:first-child{border-top:0}.avc .item{border-top:0}.avc .v small{display:block;font-family:var(--body);font-weight:400;font-size:.78rem;color:var(--muted)}.avc .chips{gap:8px}.avc details .list{padding-left:4px}
 .note{font-size:.88rem;padding:10px 12px;border-radius:10px;background:var(--yolk-soft)}
 .note.bad{color:var(--bad)}
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -234,9 +235,29 @@ textarea:focus-visible{outline:3px solid var(--yolk);outline-offset:2px}
       </div>
       <div class="row" id="vMoney">
         <div class="field"><label for="vPrice">Montant (€)</label><input id="vPrice" type="number" inputmode="decimal" step="0.01" min="0"></div>
-        <div class="field"><label>Payé ?</label><div class="chips"><button class="chip" type="button" id="vPaid" aria-pressed="true">Oui</button><button class="chip" type="button" id="vUnpaid" aria-pressed="false">Pas encore</button></div></div>
+        <div class="field"><label>Payé ?</label><div class="chips"><button class="chip" type="button" id="vPaid" aria-pressed="true">Oui</button><button class="chip" type="button" id="vUnpaid" aria-pressed="false">Pas encore</button><button class="chip" type="button" id="vAdv" aria-pressed="false" hidden>Sur l'avance</button></div></div>
       </div>
+      <div class="note" id="vAdvNote" hidden></div>
       <button class="btn" id="vSave" type="button">Enregistrer la vente</button>
+    </div>
+    <div class="panel" id="avBox">
+      <h2>Avances clients</h2>
+      <div class="sub">Un client vous paie d'avance ? Notez la somme versée, puis touchez « Retrait » à chaque fois qu'il prend des œufs : l'appli déduit toute seule et affiche ce qu'il lui reste. Les retraits comptent dans vos ventes.</div>
+      <div id="avList" style="margin-top:8px"></div>
+      <details id="avForm">
+        <summary class="sub" style="cursor:pointer;padding:6px 0">+ Noter une avance</summary>
+        <div class="view" style="padding-top:10px">
+          <div class="row">
+            <div class="field"><label for="avDate">Date</label><input type="date" id="avDate"></div>
+            <div class="field"><label for="avClient">Client</label><input id="avClient" list="clients" placeholder="Nom du client"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="avMontant">Somme versée (€)</label><input id="avMontant" type="number" inputmode="decimal" step="0.01" min="0" placeholder="50"></div>
+            <div class="field"><label for="avPrix12">Prix des 12 œufs (€)</label><input id="avPrix12" type="number" inputmode="decimal" step="0.01" min="0" value="4"></div>
+          </div>
+          <button class="btn" id="avSave" type="button">Enregistrer l'avance</button>
+        </div>
+      </details>
     </div>
     <div class="panel"><h2>Dernières sorties d'œufs</h2><div class="list" id="vList"></div></div>
   </section>
@@ -358,11 +379,11 @@ const fmtDay = s => new Date(s+"T12:00").toLocaleDateString("fr-FR",{weekday:"sh
 const toNum = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-const VERSION = "0.7";
+const VERSION = "0.8";
 const EGG = ` <svg class="egg" viewBox="0 0 20 24" aria-hidden="true"><defs><radialGradient id="eggG" cx="38%" cy="32%" r="75%"><stop offset="0" stop-color="#F2B47A"/><stop offset=".55" stop-color="#DB8A4A"/><stop offset="1" stop-color="#B8662D"/></radialGradient><radialGradient id="eggH" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs><path d="M10 1.2C5.5 1.2 1.8 8.3 1.8 13.6 1.8 18.9 5.5 22.8 10 22.8s8.2-3.9 8.2-9.2C18.2 8.3 14.5 1.2 10 1.2Z" fill="url(#eggG)"/><ellipse cx="7" cy="8.5" rx="3" ry="4" fill="url(#eggH)"/></svg>`;
 
-const COLS = ["ponte","achats","ventes","lots","evenements"];
-const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
+const COLS = ["ponte","achats","ventes","lots","evenements","avances"];
+const state = { ponte: [], achats: [], ventes: [], lots: [], evenements: [], avances: [], loaded: true, cfg: { poules: 6, prixOeuf: 0.35 } };
 
 /* ---------- stockage local (sur le téléphone) ---------- */
 const KEY = "carnet-poulailler.v1";
@@ -502,16 +523,17 @@ function renderAchats(){
 
 /* ---------- VENTES ---------- */
 let paid = true, priceTouched = false;
-const setPaid = v => { paid=v; $("vPaid").setAttribute("aria-pressed", v); $("vUnpaid").setAttribute("aria-pressed", !v); };
-$("vPaid").onclick = () => setPaid(true); $("vUnpaid").onclick = () => setPaid(false);
+const setPaid = v => { paid=v; $("vPaid").setAttribute("aria-pressed", v===true); $("vUnpaid").setAttribute("aria-pressed", v===false); $("vAdv").setAttribute("aria-pressed", v==="avance"); priceTouched=false; autoPrice(); avSync(); };
+$("vPaid").onclick = () => setPaid(true); $("vUnpaid").onclick = () => setPaid(false); $("vAdv").onclick = () => setPaid("avance");
 let mode = "vente", gift = false;
 const MODES = { vente: ["vModeSale","Enregistrer la vente","Voisine, collègue…","Client"], don: ["vModeGift","Enregistrer le don","Famille, voisin…","À qui"] };
 const setMode = m => { mode = m; gift = m !== "vente";
   for (const [k,[id]] of Object.entries(MODES)) $(id).setAttribute("aria-pressed", k===m);
   $("vMoney").hidden = gift; $("vSave").textContent = MODES[m][1]; $("vClient").placeholder = MODES[m][2];
-  document.querySelector('label[for="vClient"]').textContent = MODES[m][3]; };
+  document.querySelector('label[for="vClient"]').textContent = MODES[m][3]; avSync(); };
 $("vModeSale").onclick = () => setMode("vente"); $("vModeGift").onclick = () => setMode("don");
-const autoPrice = () => { if (!priceTouched) $("vPrice").value = ((parseInt($("vEggs").value)||0) * state.cfg.prixOeuf).toFixed(2); };
+const autoPrice = () => { if (priceTouched) return; const n = parseInt($("vEggs").value)||0, c = paid==="avance" ? avMatch() : null;
+  $("vPrice").value = (c ? n*c.prix12/12 : n*state.cfg.prixOeuf).toFixed(2); };
 $("vEggs").oninput = autoPrice;
 $("vPrice").oninput = () => priceTouched = true;
 document.querySelectorAll("[data-q]").forEach(b => b.onclick = () => { $("vEggs").value = b.dataset.q; autoPrice(); });
@@ -519,14 +541,17 @@ $("vSave").onclick = async () => {
   const oeufs = parseInt($("vEggs").value)||0; if (!oeufs) { toast("Indiquez le nombre d'œufs"); return; }
   $("vSave").disabled = true;
   try {
-    await db.collection("ventes").add({ date: $("vDate").value || todayISO(), client: $("vClient").value.trim(), oeufs, prix: gift ? 0 : toNum($("vPrice").value), paye: gift ? true : paid, type: mode });
+    const adv = !gift && paid==="avance" ? avMatch() : null;
+    const v = { date: $("vDate").value || todayISO(), client: adv ? adv.nom : $("vClient").value.trim(), oeufs, prix: gift ? 0 : toNum($("vPrice").value), paye: gift ? true : paid!==false, type: mode };
+    if (adv) v.avance = true;
+    await db.collection("ventes").add(v);
     toast(mode==="don" ? "Don enregistré" : mode==="maison" ? "Conso perso enregistrée" : "Vente enregistrée"); priceTouched=false; setPaid(true); autoPrice();
   } catch(e){ toast("Échec de l'enregistrement"); }
   $("vSave").disabled = false;
 };
 function venteRow(v){
   const don = v.type === "don", home = v.type === "maison";
-  return `<div class="item"><div class="t"><b>${esc(v.client)||(don?"Don":home?"Conso perso":"Client")}</b> ${don?'<span class="pill">don</span>':home?'<span class="pill">conso perso</span>':v.paye?"":'<span class="pill warn">à payer</span>'}<small>${fmtDay(v.date)} · ${v.oeufs} œufs</small></div><div class="v">${don?"offert":home?"–":eur(v.prix)}</div>${v.paye?delBtn("ventes",v.id):`<button class="del" type="button" data-pay="${esc(v.id)}">Payé</button>`}</div>`;
+  return `<div class="item"><div class="t"><b>${esc(v.client)||(don?"Don":home?"Conso perso":"Client")}</b> ${don?'<span class="pill">don</span>':home?'<span class="pill">conso perso</span>':v.avance?'<span class="pill">avance</span>':v.paye?"":'<span class="pill warn">à payer</span>'}<small>${fmtDay(v.date)} · ${v.oeufs} œufs</small></div><div class="v">${don?"offert":home?"–":eur(v.prix)}</div>${v.paye?delBtn("ventes",v.id):`<button class="del" type="button" data-pay="${esc(v.id)}">Payé</button>`}</div>`;
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-pay]"); if (!b) return;
@@ -535,10 +560,73 @@ document.addEventListener("click", async e => {
 function renderVentes(){
   const list = [...state.ventes].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
   $("vList").innerHTML = list.length ? list.map(venteRow).join("") : `<div class="empty">Aucune sortie d'œufs pour l'instant.</div>`;
-  const clients = [...new Set(state.ventes.map(v=>v.client).filter(Boolean))];
+  const clients = [...new Set([...state.ventes, ...state.avances].map(v=>v.client).filter(Boolean))];
   $("clients").innerHTML = clients.map(c=>`<option value="${esc(c)}">`).join("");
-  autoPrice();
+  autoPrice(); renderAvances(); avSync();
 }
+
+/* ---------- AVANCES CLIENTS ---------- */
+const avKey = s => String(s||"").trim().toLowerCase();
+const r2a = n => Math.round(n*100)/100;
+function avClients(){
+  const m = {};
+  for (const a of [...state.avances].sort((x,y)=>(x.date||"").localeCompare(y.date||""))) {
+    const k = avKey(a.client); if (!k) continue;
+    const c = m[k] ??= { key:k, nom:"", verse:0, utilise:0, oeufs:0, prix12:4, depots:[], retraits:[] };
+    c.nom = String(a.client).trim(); c.verse += a.montant||0; if (a.prix12) c.prix12 = a.prix12; c.depots.push(a);
+  }
+  for (const v of state.ventes) if (v.avance) { const c = m[avKey(v.client)]; if (c) { c.utilise += v.prix||0; c.oeufs += v.oeufs||0; c.retraits.push(v); } }
+  for (const c of Object.values(m)) c.reste = r2a(c.verse - c.utilise);
+  return Object.values(m).sort((a,b)=> (b.reste>0)-(a.reste>0) || a.nom.localeCompare(b.nom));
+}
+const avFind = k => avClients().find(c => c.key === k);
+const avMatch = () => avFind(avKey($("vClient").value));
+function avSync(){
+  const c = gift ? null : avMatch();
+  $("vAdv").hidden = !c;
+  if (!c && paid==="avance") { setPaid(true); return; }
+  $("vAdvNote").hidden = !c;
+  if (c) $("vAdvNote").innerHTML = paid==="avance" ? `Payé sur l'avance de <b>${esc(c.nom)}</b> : il reste ${eur(c.reste)} avant cette vente.` : `<b>${esc(c.nom)}</b> a une avance (reste ${eur(c.reste)}). Choisissez « Sur l'avance » pour la déduire.`;
+}
+$("vClient").oninput = avSync;
+function renderAvances(){
+  const cs = avClients();
+  $("avList").innerHTML = cs.length ? cs.map(c => {
+    const box = c.prix12 ? Math.floor(c.reste/c.prix12 + 1e-9) : 0, k = esc(c.key);
+    const hist = [...c.depots.map(a => ({ ...a, _dep: true })), ...c.retraits].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    const tag = c.reste < 0 ? ' <span class="pill warn">à payer</span>' : c.reste < c.prix12 ? ' <span class="pill warn">bientôt épuisée</span>' : "";
+    return `<div class="avc">
+      <div class="item"><div class="t"><b>${esc(c.nom)}</b>${tag}<small>Versé ${eur(c.verse)} · ${num(c.oeufs)} œufs retirés · 12 œufs = ${eur(c.prix12)}</small></div>
+      <div class="v">${c.reste < 0 ? "doit " + eur(-c.reste) : eur(c.reste)}<small>${c.reste < 0 ? "à vous payer" : `reste · ${box} boîte${box>1?"s":""} de 12`}</small></div><span></span></div>
+      <div class="chips"><button class="chip" type="button" data-avtake="${k}" data-n="12">Retrait 12 œufs · ${eur(c.prix12)}</button><button class="chip" type="button" data-avtake="${k}" data-n="24">Retrait 24 œufs · ${eur(c.prix12*2)}</button><button class="chip" type="button" data-avadd="${k}">+ Rajouter de l'argent</button></div>
+      <details><summary class="sub" style="cursor:pointer;padding:8px 0 0">Historique (${hist.length})</summary><div class="list">${hist.map(h => h._dep
+        ? `<div class="item"><div class="t"><b>Avance versée</b><small>${fmtDay(h.date)}</small></div><div class="v">+${eur(h.montant)}</div>${delBtn("avances",h.id)}</div>`
+        : `<div class="item"><div class="t"><b>Retrait de ${h.oeufs} œufs</b><small>${fmtDay(h.date)}</small></div><div class="v">−${eur(h.prix)}</div>${delBtn("ventes",h.id)}</div>`).join("")}</div></details>
+    </div>`; }).join("") : `<div class="empty">Aucune avance pour l'instant.</div>`;
+}
+$("avDate").value = todayISO();
+$("avSave").onclick = async () => {
+  const client = $("avClient").value.trim(), montant = r2a(toNum($("avMontant").value)), prix12 = r2a(toNum($("avPrix12").value));
+  if (!client) { toast("Indiquez le nom du client"); return; }
+  if (!montant) { toast("Indiquez la somme versée"); return; }
+  if (!prix12) { toast("Indiquez le prix des 12 œufs"); return; }
+  $("avSave").disabled = true;
+  try {
+    await db.collection("avances").add({ date: $("avDate").value || todayISO(), client, montant, prix12 });
+    toast(`Avance de ${eur(montant)} enregistrée`); $("avMontant").value = ""; $("avClient").value = ""; $("avForm").open = false;
+  } catch(e){ toast("Échec de l'enregistrement"); }
+  $("avSave").disabled = false;
+};
+document.addEventListener("click", async e => {
+  const add = e.target.closest("[data-avadd]");
+  if (add) { const c = avFind(add.dataset.avadd); if (!c) return; $("avClient").value = c.nom; $("avPrix12").value = c.prix12; $("avMontant").value = ""; $("avDate").value = todayISO(); $("avForm").open = true; $("avMontant").focus(); return; }
+  const b = e.target.closest("[data-avtake]"); if (!b) return;
+  const c = avFind(b.dataset.avtake), n = +b.dataset.n; if (!c) return;
+  if (!b.classList.contains("armed")) { const t = b.textContent; b.classList.add("armed"); b.setAttribute("aria-pressed","true"); b.textContent = "Toucher pour confirmer"; setTimeout(()=>{ if (b.isConnected) { b.classList.remove("armed"); b.removeAttribute("aria-pressed"); b.textContent = t; } }, 3000); return; }
+  const prix = r2a(n*c.prix12/12);
+  try { await db.collection("ventes").add({ date: todayISO(), client: c.nom, oeufs: n, prix, paye: true, type: "vente", avance: true }); toast(`${n} œufs retirés · reste ${eur(c.reste - prix)}`); }
+  catch(err){ toast("Échec de l'enregistrement"); }
+});
 
 /* ---------- STATS ---------- */
 const setStatMode = md => { statMode = md; statRef = new Date(); for (const [k,id] of [["w","sgW"],["m","sgM"],["y","sgY"]]) $(id).setAttribute("aria-pressed", k===md); renderStats(); };
@@ -625,7 +713,10 @@ $("exportBtn").onclick = async () => {
   const by = k => (a,b) => a[k].localeCompare(b[k]);
   const ponte = [...state.ponte].sort(by("date")).map(p => ({ "Date": p.date, "Poules": p.poules||state.cfg.poules, "Œufs ramassés": p.oeufs, "Cassés": p.casses||0, "Taux de ponte": Math.round(p.oeufs/(p.poules||state.cfg.poules)*1000)/10 + " %" }));
   const achats = [...state.achats].sort(by("date")).map(a => ({ "Date": a.date, "Article": a.article, "Catégorie": FEEDS.includes(a.article)?"Aliment":"Autre", "Quantité (kg)": a.kg||"", "Prix payé (€)": a.prix, "Prix au kg (€)": a.kg ? Math.round(a.prix/a.kg*100)/100 : "", "Magasin": a.magasin||"", "Saisie": a.source||"" }));
-  const ventes = [...state.ventes].sort(by("date")).map(v => ({ "Date": v.date, "Type": v.type==="don"?"Don":v.type==="maison"?"Conso perso":"Vente", "Client": v.client||"", "Œufs": v.oeufs, "Montant (€)": v.prix, "Payé": (v.type==="don"||v.type==="maison")?"":(v.paye?"Oui":"Non") }));
+  const ventes = [...state.ventes].sort(by("date")).map(v => ({ "Date": v.date, "Type": v.type==="don"?"Don":v.type==="maison"?"Conso perso":"Vente", "Client": v.client||"", "Œufs": v.oeufs, "Montant (€)": v.prix, "Payé": (v.type==="don"||v.type==="maison")?"":v.avance?"Sur avance":(v.paye?"Oui":"Non") }));
+  const avc = avClients();
+  const avMov = avc.flatMap(c => [...c.depots.map(a => ({ "Date": a.date, "Client": c.nom, "Mouvement": "Avance versée", "Œufs": "", "Montant (€)": a.montant })), ...c.retraits.map(v => ({ "Date": v.date, "Client": c.nom, "Mouvement": "Retrait d'œufs", "Œufs": v.oeufs, "Montant (€)": -v.prix }))]).sort(by("Date"));
+  const avSum = avc.map(c => ({ "Client": c.nom, "Versé (€)": r2a(c.verse), "Œufs retirés": c.oeufs, "Utilisé (€)": r2a(c.utilise), "Reste (€)": c.reste, "Prix des 12 œufs (€)": c.prix12 }));
   const months = [...new Set([...state.ponte,...state.achats,...state.ventes].map(x => x.date.slice(0,7)))].sort();
   const bilan = months.map(m => {
     const P=state.ponte.filter(p=>p.date.startsWith(m)), A=state.achats.filter(a=>a.date.startsWith(m)), V=state.ventes.filter(v=>v.date.startsWith(m));
@@ -639,7 +730,8 @@ $("exportBtn").onclick = async () => {
   add(bilan, "Bilan mensuel", [10,14,12,13,13,13,18,11,12,12,13,13,11]);
   add(ponte, "Ponte", [12,8,14,15,13]);
   add(achats, "Achats", [12,20,10,13,13,13,18,8]);
-  add(ventes, "Sorties d'œufs", [12,8,20,8,12,7]);
+  add(ventes, "Sorties d'œufs", [12,8,20,8,12,10]);
+  if (avc.length) { add(avSum, "Avances clients", [20,10,12,11,10,18]); add(avMov, "Avances (détail)", [12,20,16,8,12]); }
   const xdata = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveFile(`poulailler-${todayISO()}.xlsx`, new Blob([xdata], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })); toast("Fichier Excel téléchargé");
 };
